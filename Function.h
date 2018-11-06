@@ -4,33 +4,36 @@
 #include <vector>
 #include <string>
 
-struct Attribute {
-	std::string name;
-	std::string type;
-	unsigned int size; //the number of byte used
-	unsigned int address;
-};
+#include "StructDefinition.h"
 
-struct Instruction {
-	std::string op;
-	unsigned int pos;
-	unsigned int address;
-	std::vector<std::string> args;
-};
-
+#define N_DANGEROUS_FUNC 11
 
 class Function {
 private:
+	//All the dangerous functions to be consider
+	static const std::string dangerous_functions[N_DANGEROUS_FUNC];
+
+	//All the vulnerabilities found
+	static std::vector<Vunerability> vulnerabilities;
+
+	//Registers and Memory Stack (Shared between function)
+	static MemoryStack stack;
+	static Registers regs;
+
+	//Unique Attributes
+	std::string name;
+	unsigned int currentInst;
 	std::vector<Attribute> attributes;
 	std::vector<Instruction> instructions;
 
 public:
-	Function();
+	Function(std::string f_name);
 	virtual ~Function();
-	Attribute getAttribute(unsigned int index);
-	Instruction getInstruction(unsigned int index);
 	void addAttribute(Attribute att);
 	void addInstruction(Instruction inst);
+	bool compareFunctionName (std::string cmp_name);
+	std::string execute(); 	//Execute the function. If the instruction "call" is found during the execution,
+							//return the name of the function called. Otherwise, returns NULL
 
 };
 

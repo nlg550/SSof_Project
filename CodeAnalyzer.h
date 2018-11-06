@@ -4,19 +4,14 @@
 #include <vector>
 #include <string>
 #include <map>
-#include <json.hpp> //JSON Library
 
+#include "json.hpp" //JSON Library
 #include "Function.h"
-
-struct Register{
-	std::string name;
-	Attribute attribute;
-};
 
 class CodeAnalyzer {
 private:
 	std::vector<Function> functions;
-	std::map<unsigned int, Attribute> stack;
+
 public:
 	CodeAnalyzer();
 	virtual ~CodeAnalyzer();

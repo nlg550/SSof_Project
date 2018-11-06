@@ -9,12 +9,25 @@
 
 CodeAnalyzer::CodeAnalyzer()
 {
-	// TODO Auto-generated constructor stub
+	functions.resize(0);
 
 }
 
 CodeAnalyzer::~CodeAnalyzer()
 {
-	// TODO Auto-generated destructor stub
+	functions.clear();
 }
 
+void CodeAnalyzer::readJSON(const std::string filename)
+{
+
+
+}
+
+void CodeAnalyzer::writeJSON(const std::string filename)
+{
+}
+
+void CodeAnalyzer::analyze()
+{
+}
