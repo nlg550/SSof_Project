@@ -4,6 +4,8 @@
 #include <vector>
 #include <string>
 #include <map>
+#include <fstream>
+#include <iostream>
 
 #include "json.hpp" //JSON Library
 #include "Function.h"

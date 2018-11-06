@@ -22,12 +22,13 @@ private:
 
 	//Unique Attributes
 	std::string name;
+	unsigned int n_inst;
 	unsigned int currentInst;
 	std::vector<Attribute> attributes;
 	std::vector<Instruction> instructions;
 
 public:
-	Function(std::string f_name);
+	Function(std::string f_name, unsigned int n);
 	virtual ~Function();
 	void addAttribute(Attribute att);
 	void addInstruction(Instruction inst);

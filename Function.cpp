@@ -24,11 +24,12 @@ Registers regs = []()
 	return *tmp;
 }();
 
-Function::Function(std::string f_name)
+Function::Function(std::string f_name, unsigned int n)
 {
 	attributes.resize(0);
 	instructions.resize(0);
 	name = f_name;
+	n_inst = n;
 	currentInst = 0;
 }
 
