@@ -4,7 +4,7 @@
 #include <vector>
 #include <string>
 
-#include "StructDefinition.h"
+#include "StructDefinition.hpp"
 
 #define N_DANGEROUS_FUNC 11
 

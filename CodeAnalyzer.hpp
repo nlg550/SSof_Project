@@ -8,7 +8,7 @@
 #include <iostream>
 
 #include "json.hpp" //JSON Library
-#include "Function.h"
+#include "Function.hpp"
 
 class CodeAnalyzer {
 private:

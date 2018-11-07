@@ -2,7 +2,7 @@
 #include <vector>
 #include <string>
 
-#include "CodeAnalyzer.h"
+#include "CodeAnalyzer.hpp"
 
 int main() {
 

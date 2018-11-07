@@ -1,4 +1,4 @@
-#include "Function.h"
+#include "Function.hpp"
 
 //Initialisation of static class member
 const std::string dangerous_functions[N_DANGEROUS_FUNC] = { "gets", "strcpy", "strcat", "sprintf",

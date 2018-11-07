@@ -1,4 +1,4 @@
-#include "CodeAnalyzer.h"
+#include "CodeAnalyzer.hpp"
 
 using json = nlohmann::json;
 
