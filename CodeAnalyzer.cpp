@@ -28,7 +28,7 @@ CodeAnalyzer::~CodeAnalyzer()
 
 void CodeAnalyzer::readJSON(const std::string filename)
 {
-	json input;
+	/*json input;
 	std::ifstream input_file;
 
 	//Temporary variables
@@ -47,7 +47,7 @@ void CodeAnalyzer::readJSON(const std::string filename)
 	for (auto &p : input)
 	{
 		std::cout << p << std::endl;
-	}
+	}*/
 
 }
 
