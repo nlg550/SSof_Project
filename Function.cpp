@@ -19,7 +19,7 @@ Registers regs = []()
 	tmp->regAddress.clear();
 	tmp->regAttribute.clear();
 
-	tmp->regAddress("RBP", 0xFFFFFFFF);
+	tmp->regAddress.emplace("RBP", 0xFFFFFFFF);
 
 	return *tmp;
 }();
