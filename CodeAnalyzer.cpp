@@ -18,7 +18,7 @@ using json = nlohmann::json;
 
 CodeAnalyzer::CodeAnalyzer()
 {
-	functions.resize(0, Function(NULL, 0));
+	functions.resize(0, Function("", 0));
 }
 
 CodeAnalyzer::~CodeAnalyzer()
