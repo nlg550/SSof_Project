@@ -1,24 +1,13 @@
 #include "CodeAnalyzer.hpp"
 
-using json = nlohmann::json;
+//using json = nlohmann::json;
 
-//namespace custom {
-//void to_json(json& j, const Attribute& att)
-//{
-//	j = json { { "name", p.name }, { "address", p.address }, { "age", p.age } };
-//}
-//
-//void from_json(const json& j, person& p)
-//{
-//	j.at("name").get_to(p.name);
-//
-//}
-//
-//}  // namespace custom
-
-CodeAnalyzer::CodeAnalyzer()
+CodeAnalyzer::CodeAnalyzer(const std::string filename)
 {
-	functions.resize(0, Function("", 0));
+	std::vector<Vulnerability> vulnerabilities(0);
+	this->readJSON(filename);
+	analyze();
+	//this->writeJSON(filename);
 }
 
 CodeAnalyzer::~CodeAnalyzer()
@@ -30,28 +19,84 @@ void CodeAnalyzer::readJSON(const std::string filename)
 {
 	/*json input;
 	std::ifstream input_file;
-
-	//Temporary variables
-	std::string tstring;
-	unsigned int tmp;
-	Attribute att;
-	Instruction inst;
-
 	input_file.open(filename);
-
 	if (input_file.is_open())
 	{
 		input_file >> input;
 	}
-
-	for (auto &p : input)
+	else
 	{
-		std::cout << p << std::endl;
-	}*/
+		std::cout << "Erro na abertura do arquivo" << std::endl;
+	}
 
+	jsonToStruct(input, this->functions);
+
+	/*
+	Vulnerability vuln;
+	
+	jsonToStruct(input, vuln);
+	std::cout <<"2 - " << input.dump(4) << std::endl;
+	std::cout <<"3 - " <<"Vulnerabilidades: " << vuln.type << " - "<< input.size() << std::endl;
+	std::vector<Vulnerability> test;
+	test.push_back(vuln);
+	std::string f = filename + "_output";
+	this->writeJSON(f,test);
+	*/
 }
 
+void CodeAnalyzer::jsonToStruct(const json& input, std::vector<Function>& functions )
+{
+
+	int size = input.size();
+	std::cout << size << std::endl;
+	/*if(size > 1){
+		for(int i = 0; i < size; ++i ){
+			Function func
+			{
+				input[i].get<std::string>()
+			};
+		}
+	}
+	else
+	{
+		Function func
+		{
+			input[0]["main"].get<std::string>()
+		};
+	}
+*/
+	/*
+	Vulnerability v {
+		input[0]["vulnerability"].get<std::string>(),
+		input[0]["vuln_function"].get<std::string>(),
+		input[0]["address"].get<std::string>(),
+		input[0]["fnname"].get<std::string>(),
+		input[0]["overflow_var"].get<std::string>(),
+		input[0]["overflown_var"].get<std::string>(),
+	};
+	vuln = v;
+	*/
+} 
+
 void CodeAnalyzer::writeJSON(const std::string filename)
+{
+	json output;
+	int cont = 0;
+	std::ofstream file;
+	std::string file_write = filename + ".output.json";
+	file.open(filename);
+
+	while (vulnerabilities.size() != cont)
+  	{
+    	structToJson(output, vulnerabilities.at(cont));
+		file << output.dump(4) << std::endl;
+		cont++;
+ 	}
+	file.close();
+}
+
+
+void CodeAnalyzer::structToJson(json& output, const Vulnerability& vuln)
 {
 }
 

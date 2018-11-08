@@ -4,11 +4,9 @@
 
 #include "CodeAnalyzer.hpp"
 
-int main() {
+int main(int argc, char *argv[]) {
 
-	CodeAnalyzer Code;
-
-	Code.readJSON("./JSON Input/teste_output.json");
+	CodeAnalyzer Code(argv[1]);
 
 	return 0;
 }
