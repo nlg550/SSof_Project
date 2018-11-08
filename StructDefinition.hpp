@@ -4,11 +4,11 @@
 #include <vector>
 #include <map>
 
-//Definition of an attribute (base on the JSON)
-struct Attribute {
+//Definition of a variable (base on the JSON)
+struct Variable {
 	std::string name;
 	std::string type;
-	unsigned int size; //the number of byte used
+	unsigned int bytes;
 	unsigned int address;
 };
 
@@ -17,25 +17,25 @@ struct Instruction {
 	std::string op;
 	unsigned int pos;
 	unsigned int address;
-	std::vector<std::string> args;
+	std::map<std::string, std::string> args;
 };
 
-//The stack can hold both an address and an attribute. Because of that, the stack
+//The stack can hold both an address and an variable. Because of that, the stack
 //will be divided into 2 maps (<address in the memory>, <value stored>)
 struct MemoryStack {
-	std::map<unsigned int, Attribute> value_attribute;
+	std::map<unsigned int, Variable> value_variable;
 	std::map<unsigned int, unsigned long int> value_address;
 };
 
-//Like the stack, the registers can hold both an attribute and an address. So, the
+//Like the stack, the registers can hold both an Variable and an address. So, the
 //registers will be also divided in 2 maps (<name of register>, <value stored>)
 struct Registers {
-	std::map<std::string, Attribute> regAttribute;
+	std::map<std::string, Variable> regVariable;
 	std::map<std::string, unsigned int> regAddress;
 };
 
 //Definition of a vulnerability (based on the JSON)
-struct Vulnerability{
+struct Vulnerability {
 	std::string type;
 	std::string overflow_var;
 	std::string address;
@@ -44,6 +44,14 @@ struct Vulnerability{
 
 	//If doesn't have an overflow of a variable, overflown = NULL
 	std::string overflown_var;
+};
+
+//Definition of a function (based on the JSON)
+struct Function {
+	unsigned int n_inst;
+	unsigned int currentInst;
+	std::vector<Variable> variables;
+	std::vector<Instruction> instructions;
 };
 
 #endif /* STRUCTDEFINITION_H_ */

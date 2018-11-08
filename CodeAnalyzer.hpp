@@ -8,11 +8,18 @@
 #include <iostream>
 
 #include "json.hpp" //JSON Library
-#include "Function.hpp"
+#include "StructDefinition.hpp"
 
 class CodeAnalyzer {
 private:
-	std::vector<Function> functions;
+	const std::string dangerous_functions[] = { "gets", "strcpy", "strcat", "sprintf",
+			"scanf", "fscanf", "fgets", "strncpy", "strncat", "snprintf", "read" };
+
+	MemoryStack stack;
+	Registers regs;
+
+	std::map<std::string, Function> functions;
+	std::vector<Vulnerability> vulnerabilities;
 
 public:
 	CodeAnalyzer();
