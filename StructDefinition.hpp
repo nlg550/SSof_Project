@@ -35,7 +35,7 @@ struct Registers {
 };
 
 //Definition of a vulnerability (based on the JSON)
-struct Vunerability{
+struct Vulnerability{
 	std::string type;
 	std::string overflow_var;
 	std::string address;
@@ -43,7 +43,7 @@ struct Vunerability{
 	std::string vuln_function;
 
 	//If doesn't have an overflow of a variable, overflown = NULL
-	std::string overflown;
+	std::string overflown_var;
 };
 
 #endif /* STRUCTDEFINITION_H_ */

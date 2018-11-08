@@ -8,7 +8,7 @@ int main() {
 
 	CodeAnalyzer Code;
 
-	Code.readJSON("./JSON Input/test1");
+	Code.readJSON("./JSON Input/teste_output.json");
 
 	return 0;
 }

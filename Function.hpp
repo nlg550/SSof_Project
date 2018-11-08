@@ -14,7 +14,7 @@ private:
 	static const std::string dangerous_functions[N_DANGEROUS_FUNC];
 
 	//All the vulnerabilities found
-	static std::vector<Vunerability> vulnerabilities;
+	static std::vector<Vulnerability> vulnerabilities;
 
 	//Registers and Memory Stack (Shared between function)
 	static MemoryStack stack;

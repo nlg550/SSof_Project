@@ -18,8 +18,10 @@ public:
 	CodeAnalyzer();
 	virtual ~CodeAnalyzer();
 
+	void jsonToStruct(const json& input, Vulnerability& vuln);
 	void readJSON(const std::string filename);
-	void writeJSON(const std::string filename);
+	void structToJson(json& output, const Vulnerability vuln);
+	void writeJSON(const std::string filename, std::vector<Vulnerability> vuln);
 	void analyze();
 
 };

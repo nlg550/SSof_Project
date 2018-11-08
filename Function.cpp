@@ -3,7 +3,7 @@
 //Initialisation of static class member
 const std::string dangerous_functions[N_DANGEROUS_FUNC] = { "gets", "strcpy", "strcat", "sprintf",
 		"scanf", "fscanf", "fgets", "strncpy", "strncat", "snprintf", "read" };
-std::vector<Vunerability> vulnerabilities(0);
+std::vector<Vulnerability> vulnerabilities(0);
 MemoryStack stack = []()
 {
 	MemoryStack *tmp = new MemoryStack;
