@@ -6,29 +6,19 @@
 #include <map>
 #include <fstream>
 #include <iostream>
+#include <stack>
 
 #include "json.hpp" //JSON Library
 #include "StructDefinition.hpp"
-<<<<<<< Updated upstream
+
+using json = nlohmann::json;
 
 class CodeAnalyzer {
 private:
 	const std::string dangerous_functions[] = { "gets", "strcpy", "strcat", "sprintf",
 			"scanf", "fscanf", "fgets", "strncpy", "strncat", "snprintf", "read" };
 
-	MemoryStack stack;
-	Registers regs;
-
 	std::map<std::string, Function> functions;
-=======
-
-using json = nlohmann::json;
-
-class CodeAnalyzer {
-private:
-	std::vector<Function> functions;
-	//All the vulnerabilities found
->>>>>>> Stashed changes
 	std::vector<Vulnerability> vulnerabilities;
 
 public:
