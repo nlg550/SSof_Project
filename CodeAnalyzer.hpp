@@ -16,21 +16,21 @@ using json = nlohmann::json;
 
 class CodeAnalyzer {
 private:
-	const std::string dangerous_functions[11] = { "gets", "strcpy", "strcat", "sprintf",
-			"scanf", "fscanf", "fgets", "strncpy", "strncat", "snprintf", "read" };
-
 	std::map<std::string, Function> functions;
 	std::vector<Vulnerability> vulnerabilities;
 
-public:
-	CodeAnalyzer(const std::string filename);
-	virtual ~CodeAnalyzer();
-
-	void jsonToStruct(const json& input, std::vector<Function>& functions);
-	void readJSON(const std::string filename);
+	Variable* backtrackingVar(std::stack<Function*> f_stack, std::string tracking);
+	int backtrackingConst(std::stack<Function*> f_stack, std::string tracking);
 	void structToJson(json& output, const Vulnerability& vuln);
+	void jsonToStruct(const json& input, std::vector<Function>& functions);
+
+public:
+	CodeAnalyzer();
+	virtual ~CodeAnalyzer();
+	void readJSON(const std::string filename);
 	void writeJSON(const std::string filename);
 	void analyze();
+
 
 };
 
