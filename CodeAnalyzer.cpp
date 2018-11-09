@@ -3,8 +3,8 @@
 CodeAnalyzer::CodeAnalyzer(const std::string filename)
 {
 	std::vector<Vulnerability> vulnerabilities(0);
-	this->readJSON(filename);
-	analyze();
+	//this->readJSON(filename);
+	//analyze();
 	//this->writeJSON(filename);
 }
 
@@ -97,9 +97,10 @@ void CodeAnalyzer::structToJson(json& output, const Vulnerability& vuln)
 {
 }
 
-//Backtrack the instructions (beginning with i_inst) of the function func, to find the value of a register/position of memory
-//defined by the variable tracking. If is successful, return the value. Otherwise, return a empty string;
-std::string backtrackValue(Function &func, unsigned int i_inst, std::string tracking)
+//Backtrack the instructions (beginning with i_inst) of the function func, to find the value of a register or position in the memory
+//defined by the variable tracking. If is successful, return true and the value. Otherwise, return false;
+std::tuple<bool, std::string> backtrackValue(Function &func, unsigned int i_inst,
+		std::string tracking)
 {
 	Instruction current;
 
@@ -111,36 +112,60 @@ std::string backtrackValue(Function &func, unsigned int i_inst, std::string trac
 		{
 			if (current.args["dest"] == tracking)
 			{
-				if (current.args["value"][0] == "0" && current.args["value"][1] == "x") return current.args["value"]; //The value is numeric
+				if (current.args["value"][0] == '0' && current.args["value"][1] == 'x')
+				{
+					return std::make_tuple(true, current.args["value"]); //The value is numeric
+				}
 				else
+				{
 					tracking = current.args["value"]; //Keep backtracking
+				}
 			}
-
 		} else if (current.op == "lea")
 		{
-			if (current.args["dest"] == tracking
-					&& current.args["value"].find("rbp") != std::string::npos) return current.args["value"]; //The value is a variable on the stack
+			if (current.args["dest"] == tracking)
+			{
+				if (current.args["value"].find("rbp") != std::string::npos)
+				{
+					return std::make_tuple(true, current.args["value"]); //The value is a variable on the stack
+				}
+			}
 		}
 
 		i_inst--;
 	}
 
-	return "";
+	return std::make_tuple(false, "");
 
 }
 
 void CodeAnalyzer::analyze()
 {
+	Function *current_func;
 	std::stack<Function*> func_stack;
 	std::stack<Function*> tmp_func_stack;
-	Function *current_func;
+	std::vector<Variable> var_args;
+	std::vector<int> const_arg;
 
 	func_stack.emplace(&functions["main"]);
 
-	while(!func_stack.empty())
+	while (!func_stack.empty())
 	{
 		current_func = func_stack.top();
 
+		//search the current function for all function calls, and return the indexes
+		/*std::stack<unsigned int> index =
+				[current_func]
+				{
+					std::stack<unsigned int> *tmp = new std::stack<unsigned>(0);
+					for(unsigned int i = 0; i < current_func->Ninstructions; i++) if (current_func->instructions[i].op == "call") tmp->emplace_back(i);
+					return *tmp;
+				};*/
+
+		/*if (!index.empty())
+		{
+
+		}*/
 
 	}
 

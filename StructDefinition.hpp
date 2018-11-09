@@ -12,15 +12,6 @@ struct Variable {
 	unsigned int address;
 };
 
-/*//Definition of an argument (base on the JSON)
-struct Argument{
-	std::string value;
-	std::string dest;
-	std::string obs;
-	std::string fnname;
-	unsigned int address;
-};*/
-
 //Definition of an instruction (based on the JSON)
 struct Instruction {
 	std::string op;
@@ -33,10 +24,8 @@ struct Instruction {
 struct Function{
 	std::string name;
 	unsigned int Ninstructions;
-	Variable variables;
-	Instruction instructions;
-
-	unsigned int currentInst;
+	std::vector<Variable> variables;
+	std::vector<Instruction> instructions;
 };
 
 //Definition of a vulnerability (based on the JSON)
@@ -46,7 +35,8 @@ struct Vulnerability {
 	std::string fnname;
 	std::string address;
 	std::string overflow_var;
-	std::string overflown_var;  //If doesn't have an overflow of a variable, overflown = NULL
+	bool is_var_overflown;
+	std::string overflown_var;
 };
 
 #endif /* STRUCTDEFINITION_H_ */

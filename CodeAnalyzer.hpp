@@ -7,6 +7,7 @@
 #include <fstream>
 #include <iostream>
 #include <stack>
+#include <tuple>
 
 #include "json.hpp" //JSON Library
 #include "StructDefinition.hpp"
@@ -15,7 +16,7 @@ using json = nlohmann::json;
 
 class CodeAnalyzer {
 private:
-	const std::string dangerous_functions[] = { "gets", "strcpy", "strcat", "sprintf",
+	const std::string dangerous_functions[11] = { "gets", "strcpy", "strcat", "sprintf",
 			"scanf", "fscanf", "fgets", "strncpy", "strncat", "snprintf", "read" };
 
 	std::map<std::string, Function> functions;
