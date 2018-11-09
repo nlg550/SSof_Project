@@ -7,6 +7,17 @@ CodeAnalyzer::CodeAnalyzer(const std::string filename)
 {
 	readJSON(filename);
 	std::cout << "readJSON - OK" << std::endl;
+
+	//---------------------- TESTE --------------------
+	std::map<std::string,Function>::iterator it = functions.begin();
+	std::cout << "Functions:\n";
+	std::map<std::string,std::string>::iterator ti = it->second.instructions[0].args.begin();
+	for (it = functions.begin(); it != functions.end(); ++it)
+		std::cout << it->first << " : " << "- " << ti->first << " : " << ti->second << '\n';
+	//-----------------------------------------------------
+
+
+
 	writeJSON(filename);
 	std::cout << "writeSON - OK" << std::endl;
 }
@@ -46,9 +57,6 @@ void CodeAnalyzer::readJSON(const std::string filename)
 */
 void CodeAnalyzer::jsonToStruct(json input)
 {
-	int size = input.size();
-	std::cout << size << std::endl;
-
 	for (json::iterator it = input.begin(); it != input.end(); ++it) {  //Primeira interação para selecionar a funçao (main, fun)
   		Function function_;
 		function_.name = it.key();
@@ -83,7 +91,6 @@ void CodeAnalyzer::jsonToStruct(json input)
 					ins_intern.at("address").get_to(i_.address);
 					for (json::iterator it_args = ins_intern.begin(); it_args != ins_intern.end(); ++it_args) { //Segunda interação, fazendo com que o ponteiro aponte para cara elemento de Intruction (elementos)
 						json ins_args = it_args.value();
-						
 						if( it_args.key() == "args"){
 							for (json::iterator it_args_inside = ins_args.begin(); it_args_inside != ins_args.end(); ++it_args_inside) { //Segunda interação, fazendo com que o ponteiro aponte para cara elemento de Intruction (elementos)
 								json ins_args_map = it_args_inside.value();
@@ -93,31 +100,8 @@ void CodeAnalyzer::jsonToStruct(json input)
 							}
 						}
 						i_.args = args_map;
-
-						//-------------- TESTE ----------------------
-						std::map<std::string,std::string>::iterator it = args_map.begin();
-					
-						std::cout << "Args:\n";
-						for (it=args_map.begin(); it!=args_map.end(); ++it)
-							std::cout << it->first << " => " << it->second << '\n';
-						//---------------------------------
-
-
 					}
 					instructions_.push_back(i_);
-
-					//---------------------- TESTE --------------------
-					std::cout << i_.op << '\n' << i_.pos << '\n' << i_.address << std::endl;
-
-					
-					
-					std::map<std::string,std::string>::iterator it = i_.args.begin();
-					
-					std::cout << "Args:\n";
-					for (it=i_.args.begin(); it!=i_.args.end(); ++it)
-						std::cout << it->first << " => " << it->second << '\n';
-					//-----------------------------------------------------
-
 				}
 				function_.instructions = instructions_;
 			}
@@ -125,6 +109,7 @@ void CodeAnalyzer::jsonToStruct(json input)
 				std::cout << "Error na transformação da variavel JSON para struct Function" << std::endl;
 			}
 		}
+		functions.insert(std::pair<std::string,Function>(function_.name,function_));
 	}
 
 }
