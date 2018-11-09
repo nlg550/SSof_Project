@@ -9,7 +9,7 @@ struct Variable {
 	std::string name;
 	std::string type;
 	unsigned int bytes; //the number of byte used
-	std::string address;
+	unsigned int address;
 };
 
 //Definition of an instruction (based on the JSON)
@@ -22,11 +22,10 @@ struct Instruction {
 
 //Definition of a function
 struct Function{
+	std::string name;
 	unsigned int Ninstructions;
 	std::vector<Variable> variables;
 	std::vector<Instruction> instructions;
-
-	unsigned int current_inst; //Keep track of which instruction is being executed
 };
 
 //Definition of a vulnerability (based on the JSON)
