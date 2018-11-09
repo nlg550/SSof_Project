@@ -12,18 +12,17 @@
 #include "json.hpp" //JSON Library
 #include "StructDefinition.hpp"
 
+#define N_VULN_FUNC 11
+
 using json = nlohmann::json;
 
 class CodeAnalyzer {
 private:
-	const std::string dangerous_functions[11] = { "gets", "strcpy", "strcat", "sprintf",
-			"scanf", "fscanf", "fgets", "strncpy", "strncat", "snprintf", "read" };
-
 	std::map<std::string, Function> functions;
 	std::vector<Vulnerability> vulnerabilities;
 
 public:
-	CodeAnalyzer(const std::string filename);
+	CodeAnalyzer();
 	virtual ~CodeAnalyzer();
 
 	void jsonToStruct(const json& input, std::vector<Function>& functions);

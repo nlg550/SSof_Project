@@ -1,15 +1,12 @@
 #include "CodeAnalyzer.hpp"
 
-CodeAnalyzer::CodeAnalyzer(const std::string filename)
+CodeAnalyzer::CodeAnalyzer()
 {
-	std::vector<Vulnerability> vulnerabilities(0);
-	//this->readJSON(filename);
-	//analyze();
-	//this->writeJSON(filename);
 }
 
 CodeAnalyzer::~CodeAnalyzer()
 {
+	vulnerabilities.clear();
 	functions.clear();
 }
 
@@ -98,8 +95,9 @@ void CodeAnalyzer::structToJson(json& output, const Vulnerability& vuln)
 }
 
 //Backtrack the instructions (beginning with i_inst) of the function func, to find the value of a register or position in the memory
-//defined by the variable tracking. If is successful, return true and the value. Otherwise, return false;
-std::tuple<bool, std::string> backtrackValue(Function &func, unsigned int i_inst,
+//defined by the variable tracking. If is successful, return true, type of value (0 - const, 1 - var) and the value.
+//Otherwise, return false;
+std::tuple<bool, unsigned int, std::string> backtrackValue(Function &func, unsigned int i_inst,
 		std::string tracking)
 {
 	Instruction current;
@@ -114,7 +112,7 @@ std::tuple<bool, std::string> backtrackValue(Function &func, unsigned int i_inst
 			{
 				if (current.args["value"][0] == '0' && current.args["value"][1] == 'x')
 				{
-					return std::make_tuple(true, current.args["value"]); //The value is numeric
+					return std::make_tuple(true, 0, current.args["value"]); //The value is numeric
 				}
 				else
 				{
@@ -125,9 +123,22 @@ std::tuple<bool, std::string> backtrackValue(Function &func, unsigned int i_inst
 		{
 			if (current.args["dest"] == tracking)
 			{
-				if (current.args["value"].find("rbp") != std::string::npos)
+				std::string tmp = current.args["value"].substr(1, current.args["value"].length());
+
+				//Verify if the address in the memory stores a variable
+				auto is_variable = [&func, &tmp]()
 				{
-					return std::make_tuple(true, current.args["value"]); //The value is a variable on the stack
+					for(auto &p : func.variables) if(p.address == tmp) return true;
+					return false;
+				};
+
+				if (is_variable)
+				{
+					return std::make_tuple(true, 1, current.args["value"]); //The value is a variable on the stack
+				}
+				else
+				{
+					tracking = current.args["value"]; //Keep backtracking
 				}
 			}
 		}
@@ -135,38 +146,103 @@ std::tuple<bool, std::string> backtrackValue(Function &func, unsigned int i_inst
 		i_inst--;
 	}
 
-	return std::make_tuple(false, "");
-
+	return std::make_tuple(false, 0, "");
 }
 
 void CodeAnalyzer::analyze()
 {
 	Function *current_func;
 	std::stack<Function*> func_stack;
+	std::stack<std::string> name_func_stack;
 	std::stack<Function*> tmp_func_stack;
-	std::vector<Variable> var_args;
-	std::vector<int> const_arg;
 
 	func_stack.emplace(&functions["main"]);
+	name_func_stack.emplace("main");
 
 	while (!func_stack.empty())
 	{
 		current_func = func_stack.top();
 
-		//search the current function for all function calls, and return the indexes
-		/*std::stack<unsigned int> index =
-				[current_func]
-				{
-					std::stack<unsigned int> *tmp = new std::stack<unsigned>(0);
-					for(unsigned int i = 0; i < current_func->Ninstructions; i++) if (current_func->instructions[i].op == "call") tmp->emplace_back(i);
-					return *tmp;
-				};*/
-
-		/*if (!index.empty())
+		//Search for the next call instruction on the current function
+		auto found = [&current_func] ()
 		{
+			while(current_func->current_inst < current_func->Ninstructions)
+			{
+				if(current_func->instructions[current_func->current_inst].op == "call")
+				{
+					return true;
+				}
 
-		}*/
+				current_func->current_inst += 1;
+			}
 
+			return false;
+		};
+
+		if (found)
+		{
+			std::string func_name;
+			std::tuple<bool, unsigned int, std::string> backtrack;
+
+			func_name = current_func->instructions[current_func->current_inst].args["fnname"];
+			func_name = func_name.substr(1, func_name.length() - 1); //Remove <> from the function name
+
+			if (functions.find(func_name) != functions.end()) //Verify if the function exist on the JSON
+			{
+				func_stack.emplace(&functions[func_name]); //Add the function to the stack
+				name_func_stack.emplace(func_name);
+
+			} else if (func_name.find("gets") != std::string::npos)
+			{
+				backtrack = backtrackValue(*current_func, current_func->current_inst + 1, "RDI");
+
+				if (std::get<0>(backtrack))
+				{
+					if (std::get<1>(backtrack) == 1)
+					{
+						//Get the variable from the position on the stack
+						Variable arg =
+								[&current_func, &backtrack]()
+								{	for(auto &p : current_func->variables) if(p.address == std::get<2>(backtrack)) return p;};
+
+						Vulnerability vuln;
+						vuln.address = current_func->instructions[current_func->current_inst].address;
+						vuln.fnname = "gets";
+						vuln.overflow_var = arg.name;
+						vuln.vuln_function = name_func_stack.top();
+						vuln.type = "VAROVERFLOW";
+
+						int arg_relative_pos = std::stoi(arg.address.substr(3, arg.address.length()), nullptr, 16);
+						int relative_pos;
+
+						//Find all possible local variables that can be overflown
+						for (auto &p : current_func->variables)
+						{
+							relative_pos = std::stoi(p.address.substr(3, p.address.length()), nullptr, 16);
+
+							if(arg_relative_pos < relative_pos)
+							{
+								vuln.is_var_overflown = true;
+								vuln.overflown_var = p.name;
+								vulnerabilities.emplace_back(vuln);
+							}
+						}
+
+						vuln.is_var_overflown = false;
+						vuln.type = "RBPOVERFLOW";
+						vulnerabilities.emplace_back(vuln);
+
+						vuln.type = "RETOVERFLOW";
+						vulnerabilities.emplace_back(vuln);
+
+					}
+				}
+
+			}else
+			{
+
+			}
+		}
 	}
 
 }
