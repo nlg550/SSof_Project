@@ -94,7 +94,6 @@ void CodeAnalyzer::structToJson(json& output, const Vulnerability& vuln)
 {
 }
 
-
 std::tuple<bool, std::string> backtrackValue(Function &func, unsigned int i_inst, std::string tracking)
 {
 	//Backtrack the instructions (beginning with i_inst) of the function func,
@@ -151,7 +150,7 @@ std::tuple<bool, std::string> backtrackValue(Function &func, unsigned int i_inst
 
 Variable* CodeAnalyzer::backtrackingVar(std::stack<Function*> f_stack, std::string tracking)
 {
-	std::tuple<bool, unsigned int, std::string> backtrack;
+	std::tuple<bool, std::string> backtrack;
 	Function *current_func;
 
 	while (!f_stack.empty())
@@ -163,11 +162,11 @@ Variable* CodeAnalyzer::backtrackingVar(std::stack<Function*> f_stack, std::stri
 
 		if (std::get<0>(backtrack))
 		{
-				std::string pos = std::get<1>(backtrack).substr(1, std::get<1>(backtrack).length() - 1);
+			std::string pos = std::get<1>(backtrack).substr(1, std::get<1>(backtrack).length() - 1);
 
-				//Get the variable from the position on the stack
-				return [](std::vector<Variable> &vars, std::string pos)
-				{	for(auto &p : vars) if(p.address == pos) return &p;}(current_func->variables, pos);
+			//Get the variable from the position on the stack
+			return [](std::vector<Variable> &vars, std::string pos)
+			{	for(auto &p : vars) if(p.address == pos) return &p;}(current_func->variables, pos);
 		}
 	}
 
@@ -176,7 +175,7 @@ Variable* CodeAnalyzer::backtrackingVar(std::stack<Function*> f_stack, std::stri
 
 int CodeAnalyzer::backtrackingConst(std::stack<Function*> f_stack, std::string tracking)
 {
-	std::tuple<bool, unsigned int, std::string> backtrack;
+	std::tuple<bool, std::string> backtrack;
 	Function *current_func;
 
 	while (!f_stack.empty())
@@ -188,8 +187,8 @@ int CodeAnalyzer::backtrackingConst(std::stack<Function*> f_stack, std::string t
 
 		if (std::get<0>(backtrack))
 		{
-				//Get the variable from the position on the stack
-				return std::stoi(std::get<1>(backtrack), nullptr, 16);
+			//Get the variable from the position on the stack
+			return std::stoi(std::get<1>(backtrack), nullptr, 16);
 		}
 	}
 
@@ -271,9 +270,44 @@ void CodeAnalyzer::analyze()
 					vuln.type = "RETOVERFLOW";
 					vulnerabilities.emplace_back(vuln);
 				}
-			} else
-			{
 
+			} else if (func_name.find("fgets") != std::string::npos)
+			{
+				auto arg1 = backtrackingVar(func_stack, "RDI");
+				auto arg2 = backtrackingConst(func_stack, "RSI");
+
+				if (arg1 != nullptr && arg1->bytes < arg2)
+				{
+					Vulnerability vuln;
+					vuln.address = current_func->instructions[current_func->current_inst].address;
+					vuln.fnname = "gets";
+					vuln.overflow_var = arg1->name;
+					vuln.vuln_function = name_func_stack.top();
+					vuln.type = "VAROVERFLOW";
+
+					int arg_relative_pos = std::stoi(arg1->address.substr(3, arg1->address.length()), nullptr, 16);
+					int relative_pos;
+
+					//Find all possible local variables that can be overflown
+					for (auto &p : current_func->variables)
+					{
+						relative_pos = std::stoi(p.address.substr(3, p.address.length()), nullptr, 16);
+
+						if (arg_relative_pos < relative_pos)
+						{
+							vuln.is_var_overflown = true;
+							vuln.overflown_var = p.name;
+							vulnerabilities.emplace_back(vuln);
+						}
+					}
+
+					vuln.is_var_overflown = false;
+					vuln.type = "RBPOVERFLOW";
+					vulnerabilities.emplace_back(vuln);
+
+					vuln.type = "RETOVERFLOW";
+					vulnerabilities.emplace_back(vuln);
+				}
 			}
 		}
 	}
