@@ -22,16 +22,14 @@ private:
 	Variable* backtrackingVar(std::stack<Function*> f_stack, std::string tracking);
 	int backtrackingConst(std::stack<Function*> f_stack, std::string tracking);
 	void structToJson(json& output, const Vulnerability& vuln);
-	void jsonToStruct(const json& input, std::vector<Function>& functions);
+	void jsonToStruct(json input);
 
 public:
-	CodeAnalyzer();
+	CodeAnalyzer(const std::string filename);
 	virtual ~CodeAnalyzer();
 	void readJSON(const std::string filename);
 	void writeJSON(const std::string filename);
 	void analyze();
-
-
 };
 
 #endif /* CODEANALYZER_H_ */

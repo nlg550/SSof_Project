@@ -2,10 +2,7 @@ CC = g++
 VERSION = -std=c++1y
 INC = -I. 
 DEPS = CodeAnalyzer.hpp
-OBJ = main.o CodeAnalyzer.o
+OBJ = main.cpp CodeAnalyzer.cpp
 
-%.o: %.c $(DEPS)
-	$(CC) $(VERSION) -c -o $@ $< $(INC)
-
-main: $(OBJ)
-	$(CC) $(VERSION) -o $@ $^ $(INC)
+main: main.o
+	$(CC) $(VERSION) -o main $(OBJ) $(INC)

@@ -6,7 +6,7 @@
 
 int main(int argc, char *argv[]) {
 
-	//CodeAnalyzer Code(argv[1]);
+	CodeAnalyzer Code(argv[1]);
 
 	return 0;
 }

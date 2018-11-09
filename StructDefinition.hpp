@@ -4,7 +4,10 @@
 #include <vector>
 #include <map>
 
-//Definition of a variable (base on the JSON)
+/** 
+	Variable struct:
+		Definition of a variable (base on the JSON).
+*/
 struct Variable {
 	std::string name;
 	std::string type;
@@ -12,7 +15,10 @@ struct Variable {
 	std::string address;
 };
 
-//Definition of an instruction (based on the JSON)
+/** 
+	Instruction struct:
+		Definition of an instruction (based on the JSON).
+*/
 struct Instruction {
 	std::string op;
 	unsigned int pos;
@@ -20,7 +26,10 @@ struct Instruction {
 	std::string address;
 };
 
-//Definition of a function
+/** 
+	Function struct:
+		Definition of an function (based on the JSON).
+*/
 struct Function{
 	std::string name;
 	unsigned int Ninstructions;
@@ -30,7 +39,10 @@ struct Function{
 	unsigned int current_inst;
 };
 
-//Definition of a vulnerability (based on the JSON)
+/** 
+	Vulnerability struct:
+		Definition of a vulnerability (based on the JSON)
+*/
 struct Vulnerability {
 	std::string type;
 	std::string vuln_function;

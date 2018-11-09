@@ -1,105 +1,193 @@
 #include "CodeAnalyzer.hpp"
 
-CodeAnalyzer::CodeAnalyzer()
+/** 
+	Constructor of CodeAnalyzer Class 
+*/
+CodeAnalyzer::CodeAnalyzer(const std::string filename)
 {
+	readJSON(filename);
+	std::cout << "readJSON - OK" << std::endl;
+	writeJSON(filename);
+	std::cout << "writeSON - OK" << std::endl;
 }
 
+
+/** 
+	Destructor of CodeAnalyzer Class 
+*/
 CodeAnalyzer::~CodeAnalyzer()
 {
 	vulnerabilities.clear();
 	functions.clear();
 }
 
+
+/** 
+	readJSON Function:
+		This function is responsible to read a JSON file
+*/
 void CodeAnalyzer::readJSON(const std::string filename)
 {
-	/*json input;
-	 std::ifstream input_file;
-	 input_file.open(filename);
-	 if (input_file.is_open())
-	 {
-	 input_file >> input;
-	 }
-	 else
-	 {
-	 std::cout << "Erro na abertura do arquivo" << std::endl;
-	 }
-
-	 jsonToStruct(input, this->functions);
-
-	 /*
-	 Vulnerability vuln;
-
-	 jsonToStruct(input, vuln);
-	 std::cout <<"2 - " << input.dump(4) << std::endl;
-	 std::cout <<"3 - " <<"Vulnerabilidades: " << vuln.type << " - "<< input.size() << std::endl;
-	 std::vector<Vulnerability> test;
-	 test.push_back(vuln);
-	 std::string f = filename + "_output";
-	 this->writeJSON(f,test);
-	 */
+	json input;
+	std::ifstream input_file;
+	input_file.open(filename);
+	if (input_file.is_open()){
+		input_file >> input;
+	}else{
+		std::cout << "Erro na abertura do arquivo" << std::endl;
+	}
+	jsonToStruct(input);
 }
 
-void CodeAnalyzer::jsonToStruct(const json& input, std::vector<Function>& functions)
-{
 
+/** 
+	jsonToStruct Function:
+		This function is responsible to transform a json variable in a struct variable
+*/
+void CodeAnalyzer::jsonToStruct(json input)
+{
 	int size = input.size();
 	std::cout << size << std::endl;
-	/*if(size > 1){
-	 for(int i = 0; i < size; ++i ){
-	 Function func
-	 {
-	 input[i].get<std::string>()
-	 };
-	 }
-	 }
-	 else
-	 {
-	 Function func
-	 {
-	 input[0]["main"].get<std::string>()
-	 };
-	 }
-	 */
-	/*
-	 Vulnerability v {
-	 input[0]["vulnerability"].get<std::string>(),
-	 input[0]["vuln_function"].get<std::string>(),
-	 input[0]["address"].get<std::string>(),
-	 input[0]["fnname"].get<std::string>(),
-	 input[0]["overflow_var"].get<std::string>(),
-	 input[0]["overflown_var"].get<std::string>(),
-	 };
-	 vuln = v;
-	 */
+
+	for (json::iterator it = input.begin(); it != input.end(); ++it) {  //Primeira interação para selecionar a funçao (main, fun)
+  		Function function_;
+		function_.name = it.key();
+		json js_ = *it; 
+		for (json::iterator it2 = js_.begin(); it2 != js_.end(); ++it2) { // Interção dentro da função
+			if(it2.key() == "Ninstructions"){
+				function_.Ninstructions = it2.value();
+			}
+			if(it2.key()=="variables"){
+				json var_ = it2.value();
+				std::vector<Variable> variables_;
+				for (json::iterator it_Var = var_.begin(); it_Var != var_.end(); ++it_Var) { // Interação dentro das estruturas de variables
+					Variable v_;
+					json var_intern = it_Var.value();
+					var_intern.at("name").get_to(v_.name);
+					var_intern.at("type").get_to(v_.type);
+					var_intern.at("bytes").get_to(v_.bytes);
+					var_intern.at("address").get_to(v_.address);
+					variables_.push_back(v_);
+				}
+				function_.variables = variables_;
+			}
+			if(it2.key() == "instructions"){
+				json ins_ = it2.value();
+				std::vector<Instruction> instructions_;
+				for (json::iterator it_Ins = ins_.begin(); it_Ins != ins_.end(); ++it_Ins) { //Primeira Interaçao dentro das estrutura de Instructions (blocos)
+					Instruction i_;
+					std::map<std::string, std::string> args_map;
+					json ins_intern = it_Ins.value();
+					ins_intern.at("op").get_to(i_.op);
+					ins_intern.at("pos").get_to(i_.pos);
+					ins_intern.at("address").get_to(i_.address);
+					for (json::iterator it_args = ins_intern.begin(); it_args != ins_intern.end(); ++it_args) { //Segunda interação, fazendo com que o ponteiro aponte para cara elemento de Intruction (elementos)
+						json ins_args = it_args.value();
+						
+						if( it_args.key() == "args"){
+							for (json::iterator it_args_inside = ins_args.begin(); it_args_inside != ins_args.end(); ++it_args_inside) { //Segunda interação, fazendo com que o ponteiro aponte para cara elemento de Intruction (elementos)
+								json ins_args_map = it_args_inside.value();
+								std::string key = it_args_inside.key();
+								std::string value = it_args_inside.value(); 
+								args_map.insert(std::pair<std::string,std::string>(key,value));
+							}
+						}
+						i_.args = args_map;
+
+						//-------------- TESTE ----------------------
+						std::map<std::string,std::string>::iterator it = args_map.begin();
+					
+						std::cout << "Args:\n";
+						for (it=args_map.begin(); it!=args_map.end(); ++it)
+							std::cout << it->first << " => " << it->second << '\n';
+						//---------------------------------
+
+
+					}
+					instructions_.push_back(i_);
+
+					//---------------------- TESTE --------------------
+					std::cout << i_.op << '\n' << i_.pos << '\n' << i_.address << std::endl;
+
+					
+					
+					std::map<std::string,std::string>::iterator it = i_.args.begin();
+					
+					std::cout << "Args:\n";
+					for (it=i_.args.begin(); it!=i_.args.end(); ++it)
+						std::cout << it->first << " => " << it->second << '\n';
+					//-----------------------------------------------------
+
+				}
+				function_.instructions = instructions_;
+			}
+			else{
+				std::cout << "Error na transformação da variavel JSON para struct Function" << std::endl;
+			}
+		}
+	}
+
 }
 
+
+/** 
+	writeJSON Function:
+		This function is responsible to write in a JSON file the vulnerabilities found.
+*/
 void CodeAnalyzer::writeJSON(const std::string filename)
 {
-	json output;
+	json output = json::array();
 	int cont = 0;
 	std::ofstream file;
-	std::string file_write = filename + ".output.json";
-	file.open(filename);
+	std::string file_write = filename;
+	file_write.erase(file_write.length()-5,file_write.length() );
+	file_write += ".output.json";
+	file.open(file_write);
+
+//  --------------  TESTE --------------
+	Vulnerability test;
+	test.type = "type";
+	test.fnname = "fnname";
+	vulnerabilities.push_back(test);
+	vulnerabilities.push_back(test);
+	vulnerabilities.push_back(test);
+// 	------------------------------------
 
 	while (vulnerabilities.size() != cont)
 	{
 		structToJson(output, vulnerabilities.at(cont));
-		file << output.dump(4) << std::endl;
 		cont++;
 	}
+	file << output.dump(4) << std::endl;
 	file.close();
 }
 
+
+/** 
+	structToJson Function:
+		This function is responsible to transform a struct variabl in a JSON variable.
+*/
 void CodeAnalyzer::structToJson(json& output, const Vulnerability& vuln)
 {
+	output += json { {"type",vuln.type},
+					{"vuln_function",vuln.vuln_function},
+					{"fnname",vuln.fnname},
+					{"address",vuln.address},
+					{"overflow_var",vuln.overflow_var},
+					{"overflown_var",vuln.overflown_var}};
 }
 
+
+/** 
+	backtrackValue Function:
+		Backtrack the instructions (beginning with i_inst) of the function func,
+		to find the value of a register or position in the memory defined by the
+		variable tracking. If is successful, return true and the value. Otherwise,
+		return false and last tracking position
+*/
 std::tuple<bool, std::string> backtrackValue(Function &func, unsigned int i_inst, std::string tracking)
 {
-	//Backtrack the instructions (beginning with i_inst) of the function func,
-	//to find the value of a register or position in the memory defined by the
-	//variable tracking. If is successful, return true and the value. Otherwise,
-	//return false and last tracking position
+	
 
 	Instruction current;
 
@@ -148,6 +236,11 @@ std::tuple<bool, std::string> backtrackValue(Function &func, unsigned int i_inst
 	return std::make_tuple(false, tracking);
 }
 
+
+/** 
+	backtrackingVar Function:
+		This function is responsible 
+*/
 Variable* CodeAnalyzer::backtrackingVar(std::stack<Function*> f_stack, std::string tracking)
 {
 	std::tuple<bool, std::string> backtrack;
@@ -173,6 +266,11 @@ Variable* CodeAnalyzer::backtrackingVar(std::stack<Function*> f_stack, std::stri
 	return nullptr;
 }
 
+
+/** 
+	backtrakingConst Function:
+		This function is responsible
+*/
 int CodeAnalyzer::backtrackingConst(std::stack<Function*> f_stack, std::string tracking)
 {
 	std::tuple<bool, std::string> backtrack;
@@ -192,9 +290,14 @@ int CodeAnalyzer::backtrackingConst(std::stack<Function*> f_stack, std::string t
 		}
 	}
 
-	return NULL;
+	return 0;
 }
 
+
+/** 
+	analyzer Function:
+		This function is responsible to analyzer the JSON file.
+*/
 void CodeAnalyzer::analyze()
 {
 	Function *current_func;
