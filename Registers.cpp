@@ -1,26 +1,19 @@
-/*
- * Registers.cpp
- *
- *  Created on: 10 Nov 2018
- *      Author: Nicolas
- */
-
 #include "Registers.hpp"
 
 Registers::Registers()
 {
 	reg_var.clear();
-	reg_addr.clear();
+	reg_const.clear();
 
-	reg_addr.emplace("rip", 0);
-	reg_addr.emplace("rsp", 0xFFFFFFFF);
-	reg_addr.emplace("rbp", 0xFFFFFFFF);
+	reg_const.emplace("rip", 0);
+	reg_const.emplace("rsp", 0xFFFFFFFF);
+	reg_const.emplace("rbp", 0xFFFFFFFF);
 }
 
 Registers::~Registers()
 {
 	reg_var.clear();
-	reg_addr.clear();
+	reg_const.clear();
 }
 
 Variable Registers::getVarRegister(std::string name)
@@ -28,20 +21,20 @@ Variable Registers::getVarRegister(std::string name)
 	return reg_var[name];
 }
 
-unsigned int Registers::getAddrRegister(std::string name)
+unsigned int Registers::getConstRegister(std::string name)
 {
-	return reg_addr[name];
+	return reg_const[name];
 }
 
-void Registers::addRegister(Variable var, std::string name)
+void Registers::addRegister(Variable *var, std::string name)
 {
 	if(reg_var.find(name) != reg_var.end())
 	{
 		reg_var[name] = var;
 
-	}else if(reg_addr.find(name) != reg_addr.end())
+	}else if(reg_const.find(name) != reg_const.end())
 	{
-		reg_addr.erase(name);
+		reg_const.erase(name);
 		reg_var.emplace(name, var);
 	}else
 	{
@@ -54,14 +47,14 @@ void Registers::addRegister(unsigned int addr, std::string name)
 	if(reg_var.find(name) != reg_var.end())
 	{
 		reg_var.erase(name);
-		reg_addr.emplace(name, addr);
+		reg_const.emplace(name, addr);
 
-	}else if(reg_addr.find(name) != reg_addr.end())
+	}else if(reg_const.find(name) != reg_const.end())
 	{
-		reg_addr[name] = addr;
+		reg_const[name] = addr;
 
 	}else
 	{
-		reg_addr.emplace(name, addr);
+		reg_const.emplace(name, addr);
 	}
 }

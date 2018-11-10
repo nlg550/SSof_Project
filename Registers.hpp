@@ -7,16 +7,16 @@
 
 class Registers {
 private:
-	std::map<std::string, Variable> reg_var;
-	std::map<std::string, unsigned int> reg_addr;
+	std::map<std::string, Variable*> reg_var;
+	std::map<std::string, unsigned int> reg_const;
 
 public:
 	Registers();
 	virtual ~Registers();
 
 	Variable getVarRegister(std::string name);
-	unsigned int getAddrRegister(std::string name);
-	void addRegister(Variable var, std::string name);
+	unsigned int getConstRegister(std::string name);
+	void addRegister(Variable *var, std::string name);
 	void addRegister(unsigned int addr, std::string name);
 };
 

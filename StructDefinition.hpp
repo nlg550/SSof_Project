@@ -55,7 +55,7 @@ struct Vulnerability {
 
 struct MemoryStack{
 	std::map<unsigned int, Variable> var;
-	std::map<unsigned int, unsigned int> addr;
+	std::map<unsigned int, unsigned int> const_value;
 };
 
 #endif /* STRUCTDEFINITION_H_ */

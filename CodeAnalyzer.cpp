@@ -116,22 +116,22 @@ void CodeAnalyzer::jsonToStruct(json input)
 
 void CodeAnalyzer::allocFunction(Function& func, unsigned int return_addr)
 {
-	unsigned int stack_addr = reg.getAddrRegister("rsp");
+	unsigned int stack_addr = reg.getConstRegister("rsp");
 
-	mem_stack.addr.emplace(stack_addr + 8, return_addr);
-	mem_stack.addr.emplace(stack_addr + 16, reg.getAddrRegister("rbp"));
+	mem_stack.const_value.emplace(stack_addr + 8, return_addr);
+	mem_stack.const_value.emplace(stack_addr + 16, reg.getConstRegister("rbp"));
 
 	reg.addRegister(stack_addr + 16, "rbp");
-	reg.addRegister(func_addr, "rsi");
+	reg.addRegister(std::stoul(func.instructions[0].address, nullptr, 16), "rsi");
 
-	for(unsigned int i = 0; i < func.variables.size(); i++)
+	for(auto &p : func.variables)
 	{
-		std::string reg_name = func.variables[i].address.substr(0, 2);
-		int relative_pos = std::stoi(func.variables[i].address.substr(3, func.variables[i].address.length()), nullptr, 16);
-
-
-
+		std::string reg_name = p.address.substr(0, 2);
+		int relative_pos = std::stoi(p.address.substr(3, p.address.length()), nullptr, 16);
+		mem_stack.const_value.emplace(reg.getConstRegister(reg_name) + relative_pos, p);
 	}
+
+	//Missing - Search for gaps in the stack
 }
 
 /** 
