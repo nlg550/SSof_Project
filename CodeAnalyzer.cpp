@@ -114,6 +114,25 @@ void CodeAnalyzer::jsonToStruct(json input)
 
 }
 
+void CodeAnalyzer::allocFunction(Function& func, unsigned int return_addr)
+{
+	unsigned int stack_addr = reg.getAddrRegister("rsp");
+
+	mem_stack.addr.emplace(stack_addr + 8, return_addr);
+	mem_stack.addr.emplace(stack_addr + 16, reg.getAddrRegister("rbp"));
+
+	reg.addRegister(stack_addr + 16, "rbp");
+	reg.addRegister(func_addr, "rsi");
+
+	for(unsigned int i = 0; i < func.variables.size(); i++)
+	{
+		std::string reg_name = func.variables[i].address.substr(0, 2);
+		int relative_pos = std::stoi(func.variables[i].address.substr(3, func.variables[i].address.length()), nullptr, 16);
+
+
+
+	}
+}
 
 /** 
 	writeJSON Function:
@@ -162,14 +181,17 @@ void CodeAnalyzer::structToJson(json& output, const Vulnerability& vuln)
 					{"overflown_var",vuln.overflown_var}};
 }
 
-
-/** 
+void CodeAnalyzer::analyze()
+{
+}
+/*
+*
 	backtrackValue Function:
 		Backtrack the instructions (beginning with i_inst) of the function func,
 		to find the value of a register or position in the memory defined by the
 		variable tracking. If is successful, return true and the value. Otherwise,
 		return false and last tracking position
-*/
+
 std::tuple<bool, std::string> backtrackValue(Function &func, unsigned int i_inst, std::string tracking)
 {
 	
@@ -222,10 +244,10 @@ std::tuple<bool, std::string> backtrackValue(Function &func, unsigned int i_inst
 }
 
 
-/** 
+*
 	backtrackingVar Function:
 		This function is responsible 
-*/
+
 Variable* CodeAnalyzer::backtrackingVar(std::stack<Function*> f_stack, std::string tracking)
 {
 	std::tuple<bool, std::string> backtrack;
@@ -252,10 +274,10 @@ Variable* CodeAnalyzer::backtrackingVar(std::stack<Function*> f_stack, std::stri
 }
 
 
-/** 
+*
 	backtrakingConst Function:
 		This function is responsible
-*/
+
 int CodeAnalyzer::backtrackingConst(std::stack<Function*> f_stack, std::string tracking)
 {
 	std::tuple<bool, std::string> backtrack;
@@ -279,10 +301,10 @@ int CodeAnalyzer::backtrackingConst(std::stack<Function*> f_stack, std::string t
 }
 
 
-/** 
+*
 	analyzer Function:
 		This function is responsible to analyzer the JSON file.
-*/
+
 void CodeAnalyzer::analyze()
 {
 	Function *current_func;
@@ -401,4 +423,7 @@ void CodeAnalyzer::analyze()
 	}
 
 }
+*/
+
+
 

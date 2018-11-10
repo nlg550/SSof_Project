@@ -11,18 +11,22 @@
 
 #include "json.hpp" //JSON Library
 #include "StructDefinition.hpp"
+#include "Registers.hpp"
 
 using json = nlohmann::json;
 
 class CodeAnalyzer {
 private:
+	MemoryStack mem_stack;
+	Registers reg;
+
 	std::map<std::string, Function> functions;
 	std::vector<Vulnerability> vulnerabilities;
 
-	Variable* backtrackingVar(std::stack<Function*> f_stack, std::string tracking);
-	int backtrackingConst(std::stack<Function*> f_stack, std::string tracking);
 	void structToJson(json& output, const Vulnerability& vuln);
 	void jsonToStruct(json input);
+
+	void allocFunction (Function &func, unsigned int return_addr);
 
 public:
 	CodeAnalyzer(const std::string filename);

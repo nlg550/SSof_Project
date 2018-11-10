@@ -53,4 +53,9 @@ struct Vulnerability {
 	std::string overflown_var;
 };
 
+struct MemoryStack{
+	std::map<unsigned int, Variable> var;
+	std::map<unsigned int, unsigned int> addr;
+};
+
 #endif /* STRUCTDEFINITION_H_ */
