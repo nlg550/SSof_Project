@@ -1,5 +1,8 @@
 #include "CodeAnalyzer.hpp"
 
+const std::string vuln_functions[N_DANGEROUS_FUNC] = { "gets", "strcpy", "strcat", "sprintf", "scanf", "fscanf",
+		"fgets", "strncpy", "strncat", "snprintf", "read" };
+
 /** 
  Constructor of CodeAnalyzer Class
  */
@@ -187,6 +190,11 @@ unsigned int CodeAnalyzer::desallocFunction(Function& func)
 
 }
 
+//Verify if the dangerous functions is actually vulnerable
+void CodeAnalyzer::analyzeVulnFunction(std::string func_name)
+{
+}
+
 //Analyze the function defined by <func>
 void CodeAnalyzer::analyzeFunction(Function *func, std::stack<Function*> &stack_func)
 {
@@ -296,11 +304,42 @@ void CodeAnalyzer::analyzeFunction(Function *func, std::stack<Function*> &stack_
 					}
 				}
 			}
-		} //End instruction mov
+		} else if (current_inst.op == "call")
+		{
+
+			std::string func_name = current_inst.args["fnname"];
+			func_name = func_name.substr(1, func_name.length() - 1); //Remove <> from the function name
+
+			if (functions.find(func_name) != functions.end()) //Verify if the function exist on the JSON
+			{
+				stack_func.emplace(&functions[func_name]); //Add the function to the stack
+				return;
+			} else
+			{
+				auto is_vuln = [](std::string &vuln[N_DANGEROUS_FUNC], std::string func_name)
+				{
+					for(auto &p : vuln) if(func_name == p) return true;
+					return false;
+				}(vuln_functions, func_name);
+
+				if(is_vuln)
+				{
+					analyzeVulnFunction(func_name);
+				}
+			}
+		}else if(current_inst.op == "nop")
+		{
+			//Do nothing
+		}else if(current_inst.op == "push")
+		{
+
+		}
 
 		func->current_inst++;
 	}
 }
+
+
 
 //Analyze all the code
 void CodeAnalyzer::analyze()

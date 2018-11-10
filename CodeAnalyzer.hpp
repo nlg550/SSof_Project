@@ -12,10 +12,15 @@
 #include "Registers.hpp"
 #include "StructDefinition.hpp"
 
+#define N_DANGEROUS_FUNC 11
+
 using json = nlohmann::json;
 
 class CodeAnalyzer {
 private:
+	//All the dangerous functions to be consider
+	static const std::string vuln_functions[N_DANGEROUS_FUNC];
+
 	MemoryStack mem_stack;
 	Registers reg;
 
@@ -28,6 +33,7 @@ private:
 	void allocFunction (Function &func, unsigned int return_addr);
 	unsigned int desallocFunction (Function &func);
 	void analyzeFunction(Function *func, std::stack<Function*> &stack_func);
+	void analyzeVulnFunction(std::string func_name);
 
 public:
 	CodeAnalyzer(const std::string filename);
