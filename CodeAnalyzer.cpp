@@ -318,7 +318,7 @@ void CodeAnalyzer::analyzeFunction(Function *func, std::stack<Function*> &stack_
 			{
 				auto is_vuln = [](std::string &vuln[N_DANGEROUS_FUNC], std::string func_name)
 				{
-					for(auto &p : vuln) if(func_name == p) return true;
+					for(auto &p : vuln) if(func_name.find(p) != std::string::npos) return true;
 					return false;
 				}(vuln_functions, func_name);
 
