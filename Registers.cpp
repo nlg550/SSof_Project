@@ -16,14 +16,28 @@ Registers::~Registers()
 	reg_const.clear();
 }
 
-Variable Registers::getVarRegister(std::string name)
+//Search if the register <name> exist, returning true and the value if the register was found
+std::tuple<bool, Variable*> Registers::getVarRegister(std::string name)
 {
-	return reg_var[name];
+	if(reg_var.find(name) != reg_var.end())
+		{
+			return std::make_tuple(true, reg_var[name]);
+		}else
+		{
+			return std::make_tuple(false, nullptr);
+		}
 }
 
-unsigned int Registers::getConstRegister(std::string name)
+//Search if the register <name> exist, returning true and the value if the register was found
+std::tuple<bool, unsigned int> Registers::getConstRegister(std::string name)
 {
-	return reg_const[name];
+	if(reg_const.find(name) != reg_const.end())
+	{
+		return std::make_tuple(true, reg_const[name]);
+	}else
+	{
+		return std::make_tuple(false, NULL);
+	}
 }
 
 void Registers::addRegister(Variable *var, std::string name)
@@ -42,19 +56,19 @@ void Registers::addRegister(Variable *var, std::string name)
 	}
 }
 
-void Registers::addRegister(unsigned int addr, std::string name)
+void Registers::addRegister(unsigned int const_value, std::string name)
 {
 	if(reg_var.find(name) != reg_var.end())
 	{
 		reg_var.erase(name);
-		reg_const.emplace(name, addr);
+		reg_const.emplace(name, const_value);
 
 	}else if(reg_const.find(name) != reg_const.end())
 	{
-		reg_const[name] = addr;
+		reg_const[name] = const_value;
 
 	}else
 	{
-		reg_const.emplace(name, addr);
+		reg_const.emplace(name, const_value);
 	}
 }

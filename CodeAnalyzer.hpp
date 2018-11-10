@@ -1,17 +1,16 @@
 #ifndef CODEANALYZER_H_
 #define CODEANALYZER_H_
 
-#include <vector>
-#include <string>
 #include <map>
-#include <fstream>
-#include <iostream>
+#include <string>
+#include <vector>
 #include <stack>
-#include <tuple>
+#include <iostream>
+#include <fstream>
 
 #include "json.hpp" //JSON Library
-#include "StructDefinition.hpp"
 #include "Registers.hpp"
+#include "StructDefinition.hpp"
 
 using json = nlohmann::json;
 
@@ -27,6 +26,8 @@ private:
 	void jsonToStruct(json input);
 
 	void allocFunction (Function &func, unsigned int return_addr);
+	unsigned int desallocFunction (Function &func);
+	void analyzeFunction(Function *func, std::stack<Function*> &stack_func);
 
 public:
 	CodeAnalyzer(const std::string filename);
