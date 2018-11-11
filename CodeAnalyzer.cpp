@@ -1,7 +1,7 @@
 #include "CodeAnalyzer.hpp"
 
-const std::string CodeAnalyzer::vuln_functions[N_DANGEROUS_FUNC] = { "gets", "strcpy", "strcat", "sprintf", "scanf", "fscanf",
-		"fgets", "strncpy", "strncat", "snprintf", "read" };
+const std::string CodeAnalyzer::vuln_functions[N_DANGEROUS_FUNC] = { "gets", "strcpy", "strcat", "sprintf", "scanf",
+		"fscanf", "fgets", "strncpy", "strncat", "snprintf", "read" };
 
 /** 
  Constructor of CodeAnalyzer Class
@@ -9,18 +9,21 @@ const std::string CodeAnalyzer::vuln_functions[N_DANGEROUS_FUNC] = { "gets", "st
 CodeAnalyzer::CodeAnalyzer(const std::string filename)
 {
 	readJSON(filename);
-	std::cout << "readJSON - OK" << std::endl;
+	std::cout << "Read from JSON - OK" << std::endl;
+
+	analyze();
+	std::cout << "Analysis - OK" << std::endl;
 
 	//---------------------- TESTE --------------------
-	std::map<std::string, Function>::iterator it = functions.begin();
+/*	std::map<std::string, Function>::iterator it = functions.begin();
 	std::cout << "Functions:\n";
 	std::map<std::string, std::string>::iterator ti = it->second.instructions[0].args.begin();
 	for (it = functions.begin(); it != functions.end(); ++it)
-		std::cout << it->first << " : " << "- " << ti->first << " : " << ti->second << '\n';
+		std::cout << it->first << " : " << "- " << ti->first << " : " << ti->second << '\n';*/
 	//-----------------------------------------------------
 
 	writeJSON(filename);
-	std::cout << "writeSON - OK" << std::endl;
+	std::cout << "Write to JSON - OK" << std::endl;
 }
 
 /** 
@@ -58,21 +61,21 @@ void CodeAnalyzer::readJSON(const std::string filename)
 void CodeAnalyzer::jsonToStruct(json input)
 {
 	for (json::iterator it = input.begin(); it != input.end(); ++it)
-	{  //Primeira interação para selecionar a funçao (main, fun)
+	{  //First iteration to select the function
 		Function function_;
 		function_.name = it.key();
 		json js_ = *it;
 		for (json::iterator it2 = js_.begin(); it2 != js_.end(); ++it2)
-		{ // Interção dentro da função
+		{ // Iteration inside the function
 			if (it2.key() == "Ninstructions")
 			{
 				function_.Ninstructions = it2.value();
-			}else if (it2.key() == "variables")
+			} else if (it2.key() == "variables")
 			{
 				json var_ = it2.value();
 				std::vector<Variable> variables_;
 				for (json::iterator it_Var = var_.begin(); it_Var != var_.end(); ++it_Var)
-				{ // Interação dentro das estruturas de variables
+				{ // Iteration on function's variables
 					Variable v_;
 					json var_intern = it_Var.value();
 					var_intern.at("name").get_to(v_.name);
@@ -82,12 +85,12 @@ void CodeAnalyzer::jsonToStruct(json input)
 					variables_.push_back(v_);
 				}
 				function_.variables = variables_;
-			}else if (it2.key() == "instructions")
+			} else if (it2.key() == "instructions")
 			{
 				json ins_ = it2.value();
 				std::vector<Instruction> instructions_;
 				for (json::iterator it_Ins = ins_.begin(); it_Ins != ins_.end(); ++it_Ins)
-				{ //Primeira Interaçao dentro das estrutura de Instructions (blocos)
+				{ //Iteration on the function's instructions
 					Instruction i_;
 					std::map<std::string, std::string> args_map;
 					json ins_intern = it_Ins.value();
@@ -95,13 +98,13 @@ void CodeAnalyzer::jsonToStruct(json input)
 					ins_intern.at("pos").get_to(i_.pos);
 					ins_intern.at("address").get_to(i_.address);
 					for (json::iterator it_args = ins_intern.begin(); it_args != ins_intern.end(); ++it_args)
-					{ //Segunda interação, fazendo com que o ponteiro aponte para cara elemento de Intruction (elementos)
+					{ //Iteration to select the instruction arguments
 						json ins_args = it_args.value();
 						if (it_args.key() == "args")
 						{
 							for (json::iterator it_args_inside = ins_args.begin(); it_args_inside != ins_args.end();
 									++it_args_inside)
-							{ //Segunda interação, fazendo com que o ponteiro aponte para cara elemento de Intruction (elementos)
+							{ //Iteration to move each argument to the map
 								json ins_args_map = it_args_inside.value();
 								std::string key = it_args_inside.key();
 								std::string value = it_args_inside.value();
@@ -118,7 +121,9 @@ void CodeAnalyzer::jsonToStruct(json input)
 				std::cout << "Error in converting the JSON to Function struct" << std::endl;
 			}
 		}
-		functions.insert(std::pair<std::string, Function>(function_.name, function_));
+
+		function_.current_inst = 0;
+		functions.insert(std::make_pair(function_.name, function_));
 	}
 
 }
@@ -138,12 +143,12 @@ void CodeAnalyzer::writeJSON(const std::string filename)
 	file.open(file_write);
 
 //  --------------  TESTE --------------
-	Vulnerability test;
+/*	Vulnerability test;
 	test.type = "type";
 	test.fnname = "fnname";
 	vulnerabilities.push_back(test);
 	vulnerabilities.push_back(test);
-	vulnerabilities.push_back(test);
+	vulnerabilities.push_back(test);*/
 // 	------------------------------------
 
 	while (vulnerabilities.size() != cont)
@@ -168,11 +173,10 @@ void CodeAnalyzer::structToJson(json& output, const Vulnerability& vuln)
 // Allocate the memory stack and the register for the function <func>
 void CodeAnalyzer::allocFunction(Function& func, unsigned int return_addr)
 {
-	mem_stack.const_value.emplace(std::get<1>(reg.getConstRegister("rsp")) + 8, return_addr);
-	mem_stack.const_value.emplace(std::get<1>(reg.getConstRegister("rsp")) + 16,
-			std::get<1>(reg.getConstRegister("rbp")));
+	unsigned int sp = std::get<1>(reg.getConstRegister("rsp"));
 
-	reg.addRegister(std::get<1>(reg.getConstRegister("rsp")) + 16, "rbp");
+	mem_stack.const_value.emplace(sp - 8, return_addr);
+	reg.addRegister(sp - 8, "rsp");
 	reg.addRegister(std::stoul(func.instructions[0].address, nullptr, 16), "rsi");
 
 	for (auto &p : func.variables)
@@ -183,161 +187,381 @@ void CodeAnalyzer::allocFunction(Function& func, unsigned int return_addr)
 	}
 }
 
-unsigned int CodeAnalyzer::desallocFunction(Function& func)
+void CodeAnalyzer::desallocFunction(Function& func)
 {
+	unsigned int ebp = std::get<1>(reg.getConstRegister("rbp"));
 
+	reg.addRegister(mem_stack.const_value[ebp], "rbp");
+	reg.addRegister(mem_stack.const_value[ebp - 8], "rsi");
+
+	mem_stack.const_value.erase(mem_stack.const_value.begin(), mem_stack.const_value.upper_bound(ebp - 8));
+	mem_stack.var.erase(mem_stack.var.begin(), mem_stack.var.upper_bound(ebp - 8));
 }
 
 //Verify if the dangerous functions is actually vulnerable
-void CodeAnalyzer::analyzeVulnFunction(std::string func_name)
+void CodeAnalyzer::analyzeVulnFunction(Function *func, std::string func_name)
 {
+	if (func_name == "gets")
+	{
+		auto arg = std::get<1>(reg.getVarRegister("rdi"));
+
+		Vulnerability vuln;
+		vuln.address = func->instructions[func->current_inst].address;
+		vuln.fnname = "gets";
+		vuln.overflow_var = arg->name;
+		vuln.vuln_function = func->name;
+		vuln.type = "VAROVERFLOW";
+
+		int arg_relative_pos = std::stoi(arg->address.substr(3, arg->address.length()), nullptr, 16);
+		int relative_pos;
+
+		//Find all possible local variables that can be overflown
+		for (auto &p : func->variables)
+		{
+			relative_pos = std::stoi(p.address.substr(3, p.address.length()), nullptr, 16);
+
+			if (arg_relative_pos < relative_pos)
+			{
+				vuln.is_var_overflown = true;
+				vuln.overflown_var = p.name;
+				vulnerabilities.emplace_back(vuln);
+			}
+		}
+
+		vuln.is_var_overflown = false;
+		vuln.type = "RBPOVERFLOW";
+		vulnerabilities.emplace_back(vuln);
+
+		vuln.type = "RETOVERFLOW";
+		vulnerabilities.emplace_back(vuln);
+
+	} else if (func_name == "fgets")
+	{
+		auto arg1 = std::get<1>(reg.getVarRegister("rdi"));
+		auto arg2 = std::get<1>(reg.getConstRegister("rsi"));
+
+		std::cout << arg1->bytes << " " << arg2 << std::endl;
+
+		if (arg1->bytes < arg2)
+		{
+			Vulnerability vuln;
+			vuln.address = func->instructions[func->current_inst].address;
+			vuln.fnname = "fgets";
+			vuln.overflow_var = arg1->name;
+			vuln.vuln_function = func->name;
+			vuln.type = "VAROVERFLOW";
+
+			int arg_relative_pos = std::stoi(arg1->address.substr(3, arg1->address.length()), nullptr, 16);
+			int relative_pos;
+
+			//Find all possible local variables that can be overflown
+			for (auto &p : func->variables)
+			{
+				relative_pos = std::stoi(p.address.substr(3, p.address.length()), nullptr, 16);
+
+				if (arg_relative_pos < relative_pos)
+				{
+					vuln.is_var_overflown = true;
+					vuln.overflown_var = p.name;
+					vulnerabilities.emplace_back(vuln);
+				}
+			}
+
+			vuln.is_var_overflown = false;
+			vuln.type = "RBPOVERFLOW";
+			vulnerabilities.emplace_back(vuln);
+
+			vuln.type = "RETOVERFLOW";
+			vulnerabilities.emplace_back(vuln);
+		}
+	}
 }
 
 //Analyze the function defined by <func>
 void CodeAnalyzer::analyzeFunction(Function *func, std::stack<Function*> &stack_func)
 {
 	Instruction current_inst;
+	bool leave = false;
 
 	while (func->current_inst < func->Ninstructions)
 	{
 		current_inst = func->instructions[func->current_inst];
 
-		if (current_inst.op == "mov") //Instruction mov
+		if (!leave)
 		{
-			std::string dest = current_inst.args["dest"];
-			std::string value = current_inst.args["value"];
-
-			auto pos = dest.find("[");
-
-			if (pos != std::string::npos) //The destination is a pointer
+			if (current_inst.op == "mov")
 			{
-				dest = dest.substr(pos + 1, dest.length() - 1);
+				std::string dest = current_inst.args["dest"];
+				std::string value = current_inst.args["value"];
 
-				std::string reg_name = dest.substr(0, 2);
-				int relative_pos = std::stoi(dest.substr(3, dest.length()), nullptr, 16);
-				unsigned int mem_pos = std::get<1>(reg.getConstRegister(reg_name)) + relative_pos;
+				auto pos = dest.find("[");
 
-				if (value[0] == '0' && value[1] == 'x') //The value is a number
+				if (pos != std::string::npos) //The destination is a pointer
 				{
-					if (mem_stack.const_value.find(mem_pos) != mem_stack.const_value.end())
-					{
-						mem_stack.const_value[mem_pos] = std::stoul(value, nullptr, 16);
+					dest = dest.substr(pos + 1, dest.length() - 1);
+					std::string reg_name = dest.substr(0, 2);
+					int relative_pos = std::stoi(dest.substr(3, dest.length()), nullptr, 16);
+					unsigned int mem_pos = std::get<1>(reg.getConstRegister(reg_name)) + relative_pos;
 
-					} else
-					{
-						mem_stack.const_value.emplace(mem_pos, std::stoul(value, nullptr, 16));
-					}
-				} else //The value is a register
-				{
+//				if(mem_pos > std::get<1>(reg.getConstRegister("rsp")) || mem_pos <= std::get<1>(reg.getConstRegister("rbp")))
+//				{
+//
+//				}
 
-					auto reg_value_const = reg.getConstRegister(value);
-
-					if (std::get<0>(reg_value_const))
+					if (value[0] == '0' && value[1] == 'x') //mov [pointer], number
 					{
 						if (mem_stack.const_value.find(mem_pos) != mem_stack.const_value.end())
 						{
-							mem_stack.const_value[mem_pos] = std::get<1>(reg_value_const);
+							mem_stack.const_value[mem_pos] = std::stoul(value, nullptr, 16);
 
 						} else
 						{
-							mem_stack.const_value.emplace(mem_pos, std::get<1>(reg_value_const));
+							mem_stack.const_value.emplace(mem_pos, std::stoul(value, nullptr, 16));
 						}
-					} else
-					{
-						auto reg_value = reg.getVarRegister(value);
-
-						if (std::get<0>(reg_value))
-						{
-							if (mem_stack.var.find(mem_pos) != mem_stack.var.end())
-							{
-								mem_stack.var[mem_pos] = *(std::get<1>(reg_value));
-
-							} else
-							{
-								mem_stack.var.emplace(mem_pos, *(std::get<1>(reg_value)));
-							}
-						}
-					}
-				}
-			} else //The destinantion is a register
-			{
-				if (value[0] == '0' && value[1] == 'x')
-				{
-					reg.addRegister(std::stoul(value, nullptr, 16), dest);
-				} else
-				{
-					auto pos = value.find("[");
-
-					if (pos != std::string::npos) //The value is a pointer
-					{
-						value = value.substr(pos + 1, dest.length() - 1);
-
-						std::string reg_name = value.substr(0, 2);
-						int relative_pos = std::stoi(value.substr(3, value.length()), nullptr, 16);
-						unsigned int mem_pos = std::get<1>(reg.getConstRegister(reg_name)) + relative_pos;
-
-						if (mem_stack.const_value.find(mem_pos) != mem_stack.const_value.end())
-						{
-							reg.addRegister(mem_stack.const_value[mem_pos], dest);
-
-						} else if (mem_stack.var.find(mem_pos) != mem_stack.var.end())
-						{
-							reg.addRegister(&(mem_stack.var[mem_pos]), dest);
-						}
-
-					} else //The value is also a register
+					} else //mov [pointer], reg
 					{
 						auto reg_value_const = reg.getConstRegister(value);
 
 						if (std::get<0>(reg_value_const))
 						{
-							reg.addRegister(std::get<1>(reg_value_const), dest);
+							if (mem_stack.const_value.find(mem_pos) != mem_stack.const_value.end())
+							{
+								mem_stack.const_value[mem_pos] = std::get<1>(reg_value_const);
 
+							} else
+							{
+								mem_stack.const_value.emplace(mem_pos, std::get<1>(reg_value_const));
+							}
 						} else
 						{
 							auto reg_value = reg.getVarRegister(value);
 
 							if (std::get<0>(reg_value))
 							{
-								reg.addRegister(std::get<1>(reg_value), dest);
+								if (mem_stack.var.find(mem_pos) != mem_stack.var.end())
+								{
+									mem_stack.var[mem_pos] = *(std::get<1>(reg_value));
+
+								} else
+								{
+									mem_stack.var.emplace(mem_pos, *(std::get<1>(reg_value)));
+								}
 							}
 						}
+					}
+				} else //The destinantion is a register
+				{
+					if (value[0] == '0' && value[1] == 'x') //mov reg, number
+					{
+						reg.addRegister(std::stoul(value, nullptr, 16), dest);
+					} else
+					{
+						auto pos = value.find("[");
 
+						if (pos != std::string::npos) //mov reg, [pointer]
+						{
+							if (current_inst.args.find("obs") == current_inst.args.end()) //Ignore stdin
+							{
+								value = value.substr(pos + 1, value.length() - 1);
+								std::string reg_name = value.substr(0, 2);
+								int relative_pos = std::stoi(value.substr(3, value.length()), nullptr, 16);
+								unsigned int mem_pos = std::get<1>(reg.getConstRegister(reg_name)) + relative_pos;
+
+								if (mem_stack.const_value.find(mem_pos) != mem_stack.const_value.end())
+								{
+									reg.addRegister(mem_stack.const_value[mem_pos], dest);
+
+								} else if (mem_stack.var.find(mem_pos) != mem_stack.var.end())
+								{
+									reg.addRegister(&(mem_stack.var[mem_pos]), dest);
+								}
+							}
+
+						} else //mov reg, reg
+						{
+							auto reg_value_const = reg.getConstRegister(value);
+
+							if (std::get<0>(reg_value_const))
+							{
+								reg.addRegister(std::get<1>(reg_value_const), dest);
+
+							} else
+							{
+								auto reg_value = reg.getVarRegister(value);
+
+								if (std::get<0>(reg_value))
+								{
+									reg.addRegister(std::get<1>(reg_value), dest);
+								}
+							}
+
+						}
 					}
 				}
-			}
-		} else if (current_inst.op == "call")
-		{
-
-			std::string func_name = current_inst.args["fnname"];
-			func_name = func_name.substr(1, func_name.length() - 1); //Remove <> from the function name
-
-			if (functions.find(func_name) != functions.end()) //Verify if the function exist on the JSON
+			} else if (current_inst.op == "lea") //lea reg, [pointer]
 			{
-				stack_func.emplace(&functions[func_name]); //Add the function to the stack
-				return;
-			} else
-			{
-				auto is_vuln = [](const std::string vuln[N_DANGEROUS_FUNC], std::string name)
-				{
-					for(auto &p : vuln_functions) if(name.find(p) != std::string::npos) return true;
-					return false;
-				}(vuln_functions, func_name);
+				std::string dest = current_inst.args["dest"];
+				std::string value = current_inst.args["value"];
 
-				if (is_vuln)
+				auto pos = value.find("[");
+				value = value.substr(pos + 1, value.length() - 1);
+				std::string reg_name = value.substr(0, 2);
+				int relative_pos = std::stoi(value.substr(3, value.length()), nullptr, 16);
+				unsigned int mem_pos = std::get<1>(reg.getConstRegister(reg_name)) + relative_pos;
+
+				if (mem_stack.const_value.find(mem_pos) != mem_stack.const_value.end())
 				{
-					analyzeVulnFunction(func_name);
+					reg.addRegister(mem_stack.const_value[mem_pos], dest);
+
+				} else if (mem_stack.var.find(mem_pos) != mem_stack.var.end())
+				{
+					reg.addRegister(&(mem_stack.var[mem_pos]), dest);
 				}
+
+			}else if(current_inst.op == "add")
+			{
+				std::string dest = current_inst.args["dest"];
+				std::string value = current_inst.args["value"];
+
+				if(dest == "rsp" || dest == "rbp")
+				{
+					reg.addRegister(std::get<1>(reg.getConstRegister(dest)) + std::stoul(value, nullptr, 16), dest);
+				}
+
+			}else if(current_inst.op == "sub")
+			{
+				std::string dest = current_inst.args["dest"];
+				std::string value = current_inst.args["value"];
+
+				if(dest == "rsp" || dest == "rbp")
+				{
+					reg.addRegister(std::get<1>(reg.getConstRegister(dest)) - std::stoul(value, nullptr, 16), dest);
+				}
+			}else if (current_inst.op == "call") //call <fnname>
+			{
+				std::string func_name = current_inst.args["fnname"];
+				func_name = func_name.substr(1, func_name.length() - 1); //Remove <> from the function name
+
+				if (functions.find(func_name) != functions.end()) //Verify if the function exist on the JSON
+				{
+					stack_func.emplace(&functions[func_name]); //Add the function to the stack
+					return;
+				} else
+				{
+					func_name = func_name.substr(0, func_name.find("@"));
+
+					//Verify is the function called is dangerous
+					auto is_vuln = [](const std::string vuln[N_DANGEROUS_FUNC], std::string name)
+					{
+						for(auto &p : vuln_functions) if(name == p) return true;
+						return false;
+					}(vuln_functions, func_name);
+
+					if (is_vuln)
+					{
+						analyzeVulnFunction(func, func_name);
+					}
+				}
+			} else if (current_inst.op == "nop")
+			{
+				//Do nothing
+			} else if (current_inst.op == "push")
+			{
+				reg.addRegister(std::get<1>(reg.getConstRegister("rsp")) - 8, "rsp");
+				auto sp = std::get<1>(reg.getConstRegister("rsp"));
+
+				std::string value = current_inst.args["value"];
+				auto pos = value.find("[");
+
+				if (pos != std::string::npos) //push [pointer]
+				{
+					value = value.substr(pos + 1, value.length() - 1);
+					std::string reg_name = value.substr(0, 2);
+					int relative_pos = std::stoi(value.substr(3, value.length()), nullptr, 16);
+					unsigned int mem_pos = std::get<1>(reg.getConstRegister(reg_name)) + relative_pos;
+
+					if (mem_stack.const_value.find(mem_pos) != mem_stack.const_value.end())
+					{
+						if (mem_stack.const_value.find(sp) != mem_stack.const_value.end())
+						{
+							mem_stack.const_value[sp] = mem_stack.const_value[mem_pos];
+
+						} else
+						{
+							mem_stack.const_value.emplace(sp, mem_stack.const_value[mem_pos]);
+						}
+
+					} else if (mem_stack.var.find(mem_pos) != mem_stack.var.end())
+					{
+						if (mem_stack.var.find(sp) != mem_stack.var.end())
+						{
+							mem_stack.var[sp] = mem_stack.var[mem_pos];
+
+						} else
+						{
+							mem_stack.var.emplace(sp, mem_stack.var[mem_pos]);
+						}
+					}
+				} else
+				{
+					if (value[0] == '0' && value[1] == 'x') //push number
+					{
+						if (mem_stack.const_value.find(sp) != mem_stack.const_value.end())
+						{
+							mem_stack.const_value[sp] = std::stoul(value, nullptr, 16);
+
+						} else
+						{
+							mem_stack.const_value.emplace(sp, std::stoul(value, nullptr, 16));
+						}
+					} else //push reg
+					{
+						auto reg_value = reg.getVarRegister(value);
+
+						if (std::get<0>(reg_value))
+						{
+							if (mem_stack.var.find(sp) != mem_stack.var.end())
+							{
+								mem_stack.var[sp] = *(std::get<1>(reg_value));
+
+							} else
+							{
+								mem_stack.var.emplace(sp, *(std::get<1>(reg_value)));
+							}
+						} else
+						{
+							auto reg_value_const = reg.getConstRegister(value);
+
+							if (std::get<0>(reg_value_const))
+							{
+								if (mem_stack.const_value.find(sp) != mem_stack.const_value.end())
+								{
+									mem_stack.const_value[sp] = std::get<1>(reg_value_const);
+
+								} else
+								{
+									mem_stack.const_value.emplace(sp, std::get<1>(reg_value_const));
+								}
+							}
+						}
+					}
+				}
+			} else if (current_inst.op == "leave")
+			{
+				leave = true;
 			}
-		} else if (current_inst.op == "nop")
-		{
-			//Do nothing
-		} else if (current_inst.op == "push")
-		{
 
+			func->current_inst++;
+
+		} else
+		{
+			if (current_inst.op == "ret")
+			{
+				desallocFunction(*func);
+				stack_func.pop();
+				return;
+			}
 		}
-
-		func->current_inst++;
 	}
 }
 
@@ -362,245 +586,4 @@ void CodeAnalyzer::analyze()
 	}
 
 }
-
-/*
- *
- backtrackValue Function:
- Backtrack the instructions (beginning with i_inst) of the function func,
- to find the value of a register or position in the memory defined by the
- variable tracking. If is successful, return true and the value. Otherwise,
- return false and last tracking position
-
- std::tuple<bool, std::string> backtrackValue(Function &func, unsigned int i_inst, std::string tracking)
- {
-
-
- Instruction current;
-
- while (i_inst > 0)
- {
- current = func.instructions[i_inst];
-
- if (current.op == "mov")
- {
- if (current.args["dest"] == tracking)
- {
- if (current.args["value"][0] == '0' && current.args["value"][1] == 'x')
- {
- return std::make_tuple(true, current.args["value"]); //The value is numeric
- } else
- {
- tracking = current.args["value"]; //Keep backtracking
- }
- }
- } else if (current.op == "lea")
- {
- if (current.args["dest"] == tracking)
- {
- std::string tmp = current.args["value"].substr(1, current.args["value"].length());
-
- //Verify if the address in the memory stores a variable
- auto is_variable = [](std::vector<Variable> &vars, std::string pos)
- {
- for(auto &p : vars) if(p.address == pos) return true;
- return false;
- }(func.variables, tmp);
-
- if (is_variable)
- {
- return std::make_tuple(true, current.args["value"]); //The value is a variable on the stack
- } else
- {
- tracking = current.args["value"]; //Keep backtracking
- }
- }
- }
-
- i_inst--;
- }
-
- return std::make_tuple(false, tracking);
- }
-
-
- *
- backtrackingVar Function:
- This function is responsible
-
- Variable* CodeAnalyzer::backtrackingVar(std::stack<Function*> f_stack, std::string tracking)
- {
- std::tuple<bool, std::string> backtrack;
- Function *current_func;
-
- while (!f_stack.empty())
- {
- current_func = f_stack.top();
- f_stack.pop();
-
- backtrack = backtrackValue(*current_func, current_func->current_inst + 1, "RDI");
-
- if (std::get<0>(backtrack))
- {
- std::string pos = std::get<1>(backtrack).substr(1, std::get<1>(backtrack).length() - 1);
-
- //Get the variable from the position on the stack
- return [](std::vector<Variable> &vars, std::string pos)
- {	for(auto &p : vars) if(p.address == pos) return &p;}(current_func->variables, pos);
- }
- }
-
- return nullptr;
- }
-
-
- *
- backtrakingConst Function:
- This function is responsible
-
- int CodeAnalyzer::backtrackingConst(std::stack<Function*> f_stack, std::string tracking)
- {
- std::tuple<bool, std::string> backtrack;
- Function *current_func;
-
- while (!f_stack.empty())
- {
- current_func = f_stack.top();
- f_stack.pop();
-
- backtrack = backtrackValue(*current_func, current_func->current_inst + 1, "RDI");
-
- if (std::get<0>(backtrack))
- {
- //Get the variable from the position on the stack
- return std::stoi(std::get<1>(backtrack), nullptr, 16);
- }
- }
-
- return 0;
- }
-
-
- *
- analyzer Function:
- This function is responsible to analyzer the JSON file.
-
- void CodeAnalyzer::analyze()
- {
- Function *current_func;
- std::stack<Function*> func_stack;
- std::stack<std::string> name_func_stack;
-
- func_stack.emplace(&functions["main"]);
- name_func_stack.emplace("main");
-
- while (!func_stack.empty())
- {
- current_func = func_stack.top();
-
- //Search for the next call instruction on the current function
- auto found = [](Function &func)
- {
- while(func.current_inst < func.Ninstructions)
- {
- if(func.instructions[func.current_inst].op == "call")
- {
- return true;
- }
- func.current_inst += 1;
- }
- return false;
- }(*current_func);
-
- if (found)
- {
- std::string func_name;
-
- func_name = current_func->instructions[current_func->current_inst].args["fnname"];
- func_name = func_name.substr(1, func_name.length() - 1); //Remove <> from the function name
-
- if (functions.find(func_name) != functions.end()) //Verify if the function exist on the JSON
- {
- func_stack.emplace(&functions[func_name]); //Add the function to the stack
- name_func_stack.emplace(func_name);
-
- } else if (func_name.find("gets") != std::string::npos)
- {
- auto arg = backtrackingVar(func_stack, "RDI");
-
- if (arg != nullptr)
- {
- Vulnerability vuln;
- vuln.address = current_func->instructions[current_func->current_inst].address;
- vuln.fnname = "gets";
- vuln.overflow_var = arg->name;
- vuln.vuln_function = name_func_stack.top();
- vuln.type = "VAROVERFLOW";
-
- int arg_relative_pos = std::stoi(arg->address.substr(3, arg->address.length()), nullptr, 16);
- int relative_pos;
-
- //Find all possible local variables that can be overflown
- for (auto &p : current_func->variables)
- {
- relative_pos = std::stoi(p.address.substr(3, p.address.length()), nullptr, 16);
-
- if (arg_relative_pos < relative_pos)
- {
- vuln.is_var_overflown = true;
- vuln.overflown_var = p.name;
- vulnerabilities.emplace_back(vuln);
- }
- }
-
- vuln.is_var_overflown = false;
- vuln.type = "RBPOVERFLOW";
- vulnerabilities.emplace_back(vuln);
-
- vuln.type = "RETOVERFLOW";
- vulnerabilities.emplace_back(vuln);
- }
-
- } else if (func_name.find("fgets") != std::string::npos)
- {
- auto arg1 = backtrackingVar(func_stack, "RDI");
- auto arg2 = backtrackingConst(func_stack, "RSI");
-
- if (arg1 != nullptr && arg1->bytes < arg2)
- {
- Vulnerability vuln;
- vuln.address = current_func->instructions[current_func->current_inst].address;
- vuln.fnname = "gets";
- vuln.overflow_var = arg1->name;
- vuln.vuln_function = name_func_stack.top();
- vuln.type = "VAROVERFLOW";
-
- int arg_relative_pos = std::stoi(arg1->address.substr(3, arg1->address.length()), nullptr, 16);
- int relative_pos;
-
- //Find all possible local variables that can be overflown
- for (auto &p : current_func->variables)
- {
- relative_pos = std::stoi(p.address.substr(3, p.address.length()), nullptr, 16);
-
- if (arg_relative_pos < relative_pos)
- {
- vuln.is_var_overflown = true;
- vuln.overflown_var = p.name;
- vulnerabilities.emplace_back(vuln);
- }
- }
-
- vuln.is_var_overflown = false;
- vuln.type = "RBPOVERFLOW";
- vulnerabilities.emplace_back(vuln);
-
- vuln.type = "RETOVERFLOW";
- vulnerabilities.emplace_back(vuln);
- }
- }
- }
- }
-
- }
- */
 

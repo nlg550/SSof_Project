@@ -7,6 +7,7 @@
 #include <stack>
 #include <iostream>
 #include <fstream>
+#include <tuple>
 
 #include "json.hpp" //JSON Library
 #include "Registers.hpp"
@@ -28,11 +29,11 @@ private:
 	std::vector<Vulnerability> vulnerabilities;
 
 	void allocFunction (Function &func, unsigned int return_addr);
-	unsigned int desallocFunction (Function &func);
+	void desallocFunction (Function &func);
 
 	void analyze();
 	void analyzeFunction(Function *func, std::stack<Function*> &stack_func);
-	void analyzeVulnFunction(std::string func_name);
+	void analyzeVulnFunction(Function *func, std::string func_name);
 
 	void readJSON(const std::string filename);
 	void writeJSON(const std::string filename);
