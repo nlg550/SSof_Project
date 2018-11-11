@@ -1,6 +1,6 @@
 #include "CodeAnalyzer.hpp"
 
-const std::string vuln_functions[N_DANGEROUS_FUNC] = { "gets", "strcpy", "strcat", "sprintf", "scanf", "fscanf",
+const std::string CodeAnalyzer::vuln_functions[N_DANGEROUS_FUNC] = { "gets", "strcpy", "strcat", "sprintf", "scanf", "fscanf",
 		"fgets", "strncpy", "strncat", "snprintf", "read" };
 
 /** 
@@ -67,8 +67,7 @@ void CodeAnalyzer::jsonToStruct(json input)
 			if (it2.key() == "Ninstructions")
 			{
 				function_.Ninstructions = it2.value();
-			}
-			if (it2.key() == "variables")
+			}else if (it2.key() == "variables")
 			{
 				json var_ = it2.value();
 				std::vector<Variable> variables_;
@@ -83,8 +82,7 @@ void CodeAnalyzer::jsonToStruct(json input)
 					variables_.push_back(v_);
 				}
 				function_.variables = variables_;
-			}
-			if (it2.key() == "instructions")
+			}else if (it2.key() == "instructions")
 			{
 				json ins_ = it2.value();
 				std::vector<Instruction> instructions_;
@@ -117,7 +115,7 @@ void CodeAnalyzer::jsonToStruct(json input)
 				function_.instructions = instructions_;
 			} else
 			{
-				std::cout << "Error na transformação da variavel JSON para struct Function" << std::endl;
+				std::cout << "Error in converting the JSON to Function struct" << std::endl;
 			}
 		}
 		functions.insert(std::pair<std::string, Function>(function_.name, function_));
@@ -231,31 +229,32 @@ void CodeAnalyzer::analyzeFunction(Function *func, std::stack<Function*> &stack_
 					}
 				} else //The value is a register
 				{
-					auto reg_value = reg.getVarRegister(value);
 
-					if (std::get<0>(reg_value))
+					auto reg_value_const = reg.getConstRegister(value);
+
+					if (std::get<0>(reg_value_const))
 					{
-						if (mem_stack.var.find(mem_pos) != mem_stack.var.end())
+						if (mem_stack.const_value.find(mem_pos) != mem_stack.const_value.end())
 						{
-							mem_stack.var[mem_pos] = *(std::get<1>(reg_value));
+							mem_stack.const_value[mem_pos] = std::get<1>(reg_value_const);
 
 						} else
 						{
-							mem_stack.var.emplace(mem_pos, *(std::get<1>(reg_value)));
+							mem_stack.const_value.emplace(mem_pos, std::get<1>(reg_value_const));
 						}
 					} else
 					{
-						auto reg_value_const = reg.getConstRegister(value);
+						auto reg_value = reg.getVarRegister(value);
 
-						if (std::get<0>(reg_value_const))
+						if (std::get<0>(reg_value))
 						{
-							if (mem_stack.const_value.find(mem_pos) != mem_stack.const_value.end())
+							if (mem_stack.var.find(mem_pos) != mem_stack.var.end())
 							{
-								mem_stack.const_value[mem_pos] = std::get<1>(reg_value_const);
+								mem_stack.var[mem_pos] = *(std::get<1>(reg_value));
 
 							} else
 							{
-								mem_stack.const_value.emplace(mem_pos, std::get<1>(reg_value_const));
+								mem_stack.var.emplace(mem_pos, *(std::get<1>(reg_value)));
 							}
 						}
 					}
@@ -285,22 +284,25 @@ void CodeAnalyzer::analyzeFunction(Function *func, std::stack<Function*> &stack_
 						{
 							reg.addRegister(&(mem_stack.var[mem_pos]), dest);
 						}
+
 					} else //The value is also a register
 					{
-						auto reg_value = reg.getVarRegister(value);
+						auto reg_value_const = reg.getConstRegister(value);
 
-						if (std::get<0>(reg_value))
+						if (std::get<0>(reg_value_const))
 						{
-							reg.addRegister(std::get<1>(reg_value), dest);
+							reg.addRegister(std::get<1>(reg_value_const), dest);
+
 						} else
 						{
-							auto reg_value_const = reg.getConstRegister(value);
+							auto reg_value = reg.getVarRegister(value);
 
-							if (std::get<0>(reg_value_const))
+							if (std::get<0>(reg_value))
 							{
-								reg.addRegister(std::get<1>(reg_value_const), dest);
+								reg.addRegister(std::get<1>(reg_value), dest);
 							}
 						}
+
 					}
 				}
 			}
@@ -316,21 +318,21 @@ void CodeAnalyzer::analyzeFunction(Function *func, std::stack<Function*> &stack_
 				return;
 			} else
 			{
-				auto is_vuln = [](std::string &vuln[N_DANGEROUS_FUNC], std::string func_name)
+				auto is_vuln = [](const std::string vuln[N_DANGEROUS_FUNC], std::string name)
 				{
-					for(auto &p : vuln) if(func_name.find(p) != std::string::npos) return true;
+					for(auto &p : vuln_functions) if(name.find(p) != std::string::npos) return true;
 					return false;
 				}(vuln_functions, func_name);
 
-				if(is_vuln)
+				if (is_vuln)
 				{
 					analyzeVulnFunction(func_name);
 				}
 			}
-		}else if(current_inst.op == "nop")
+		} else if (current_inst.op == "nop")
 		{
 			//Do nothing
-		}else if(current_inst.op == "push")
+		} else if (current_inst.op == "push")
 		{
 
 		}
@@ -338,8 +340,6 @@ void CodeAnalyzer::analyzeFunction(Function *func, std::stack<Function*> &stack_
 		func->current_inst++;
 	}
 }
-
-
 
 //Analyze all the code
 void CodeAnalyzer::analyze()

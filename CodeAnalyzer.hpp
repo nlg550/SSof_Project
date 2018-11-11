@@ -27,20 +27,21 @@ private:
 	std::map<std::string, Function> functions;
 	std::vector<Vulnerability> vulnerabilities;
 
-	void structToJson(json& output, const Vulnerability& vuln);
-	void jsonToStruct(json input);
-
 	void allocFunction (Function &func, unsigned int return_addr);
 	unsigned int desallocFunction (Function &func);
+
+	void analyze();
 	void analyzeFunction(Function *func, std::stack<Function*> &stack_func);
 	void analyzeVulnFunction(std::string func_name);
+
+	void readJSON(const std::string filename);
+	void writeJSON(const std::string filename);
+	void structToJson(json& output, const Vulnerability& vuln);
+	void jsonToStruct(json input);
 
 public:
 	CodeAnalyzer(const std::string filename);
 	virtual ~CodeAnalyzer();
-	void readJSON(const std::string filename);
-	void writeJSON(const std::string filename);
-	void analyze();
 };
 
 #endif /* CODEANALYZER_H_ */
