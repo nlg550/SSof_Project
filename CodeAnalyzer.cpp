@@ -201,8 +201,6 @@ void CodeAnalyzer::desallocFunction(Function& func)
 // Analyze the overflow, and what information is overflown
 void CodeAnalyzer::analyzeOverflow(Function* func, std::string func_name, Variable* arg, int overflow)
 {
-	std::cout << overflow << std::endl;
-
 	Vulnerability vuln;
 	vuln.address = func->instructions[func->current_inst].address;
 	vuln.fnname = func_name;
