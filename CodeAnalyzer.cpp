@@ -14,14 +14,6 @@ CodeAnalyzer::CodeAnalyzer(const std::string filename)
 	analyze();
 	std::cout << "Analysis - OK" << std::endl;
 
-	//---------------------- TESTE --------------------
-/*	std::map<std::string, Function>::iterator it = functions.begin();
-	std::cout << "Functions:\n";
-	std::map<std::string, std::string>::iterator ti = it->second.instructions[0].args.begin();
-	for (it = functions.begin(); it != functions.end(); ++it)
-		std::cout << it->first << " : " << "- " << ti->first << " : " << ti->second << '\n';*/
-	//-----------------------------------------------------
-
 	writeJSON(filename);
 	std::cout << "Write to JSON - OK" << std::endl;
 }
@@ -70,7 +62,8 @@ void CodeAnalyzer::jsonToStruct(json input)
 			if (it2.key() == "Ninstructions")
 			{
 				function_.Ninstructions = it2.value();
-			} else if (it2.key() == "variables")
+			}
+			else if(it2.key()=="variables")
 			{
 				json var_ = it2.value();
 				std::vector<Variable> variables_;
@@ -85,7 +78,8 @@ void CodeAnalyzer::jsonToStruct(json input)
 					variables_.push_back(v_);
 				}
 				function_.variables = variables_;
-			} else if (it2.key() == "instructions")
+			}
+			else if(it2.key() == "instructions")
 			{
 				json ins_ = it2.value();
 				std::vector<Instruction> instructions_;
@@ -142,15 +136,6 @@ void CodeAnalyzer::writeJSON(const std::string filename)
 	file_write += ".output.json";
 	file.open(file_write);
 
-//  --------------  TESTE --------------
-/*	Vulnerability test;
-	test.type = "type";
-	test.fnname = "fnname";
-	vulnerabilities.push_back(test);
-	vulnerabilities.push_back(test);
-	vulnerabilities.push_back(test);*/
-// 	------------------------------------
-
 	while (vulnerabilities.size() != cont)
 	{
 		structToJson(output, vulnerabilities.at(cont));
@@ -201,6 +186,18 @@ void CodeAnalyzer::desallocFunction(Function& func)
 //Verify if the dangerous functions is actually vulnerable
 void CodeAnalyzer::analyzeVulnFunction(Function *func, std::string func_name)
 {
+	/*
+
+	1-(Basic Analysis) what is the vulnerability, either VAROVERFLOW, RBPOVERFLOW, RETOVERFLOW;
+	2-(Advanced Analysis) what is the vulnerability, either INVALIDACCS, SCORRUPTION;
+	3-the dangerous function/instruction that causes the vulnerability;
+	4-which function of your program is vulnerable,
+	5-what is the address where the dangerous function/instruction is called;
+	6-(Basic Analysis) the overflowing buffer. In the case of VAROVERFLOW it should also state the overflown variable.
+	7-(Advanced Analysis) the overflowing buffer and the first address of the block(s) that is(are) overflown.
+	
+	(updated) Basic: gets, strcpy, strcat, fgets, strncpy, strncat
+	*/
 	if (func_name == "gets")
 	{
 		auto arg = std::get<1>(reg.getVarRegister("rdi"));
@@ -275,6 +272,52 @@ void CodeAnalyzer::analyzeVulnFunction(Function *func, std::string func_name)
 			vulnerabilities.emplace_back(vuln);
 		}
 	}
+	else if(func_name == "strcpy")
+	{
+
+
+	}
+	else if(func_name =="strcat")
+	{
+
+	}
+	else if(func_name =="strncpy")
+	{
+
+	}
+	else if(func_name =="strncat")
+	{
+
+	}
+
+
+	/*
+	(updated) Advanced: sprintf, scanf, fscanf, snprintf, read
+	*/
+	else if(func_name =="sprintf")
+	{
+		std::cout << "Segunda etapa da implementação." << std::endl;
+	}
+	else if(func_name =="scanf")
+	{
+		std::cout << "Segunda etapa da implementação." << std::endl;
+	}
+	else if(func_name =="fscanf")
+	{
+		std::cout << "Segunda etapa da implementação." << std::endl;
+	}
+	else if(func_name =="snprintf")
+	{
+		std::cout << "Segunda etapa da implementação." << std::endl;
+	}
+	else if(func_name =="read")
+	{
+		std::cout << "Segunda etapa da implementação." << std::endl;
+	}
+	else{
+		std::cout << "Erro nenhuma função conhecida foi chamada." << std::endl;
+	}
+
 }
 
 //Analyze the function defined by <func>
