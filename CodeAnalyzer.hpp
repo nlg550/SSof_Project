@@ -30,10 +30,10 @@ private:
 
 	void allocFunction (Function &func, unsigned int return_addr);
 	void desallocFunction (Function &func);
-
 	void analyze();
 	void analyzeFunction(Function *func, std::stack<Function*> &stack_func);
 	void analyzeVulnFunction(Function *func, std::string func_name);
+	void analyzeOverflow(Function *func, std::string func_name, Variable *arg, int overflow);
 
 	void readJSON(const std::string filename);
 	void writeJSON(const std::string filename);

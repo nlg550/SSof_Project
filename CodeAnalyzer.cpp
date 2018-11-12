@@ -14,14 +14,16 @@ CodeAnalyzer::CodeAnalyzer(const std::string filename)
 	analyze();
 	std::cout << "Analysis - OK" << std::endl;
 
+<<<<<<< HEAD
 	//---------------------- TESTE --------------------
-/*	std::map<std::string, Function>::iterator it = functions.begin();
-	std::cout << "Functions:\n";
-	std::map<std::string, std::string>::iterator ti = it->second.instructions[0].args.begin();
-	for (it = functions.begin(); it != functions.end(); ++it)
-		std::cout << it->first << " : " << "- " << ti->first << " : " << ti->second << '\n';*/
+	/*	std::map<std::string, Function>::iterator it = functions.begin();
+	 std::cout << "Functions:\n";
+	 std::map<std::string, std::string>::iterator ti = it->second.instructions[0].args.begin();
+	 for (it = functions.begin(); it != functions.end(); ++it)
+	 std::cout << it->first << " : " << "- " << ti->first << " : " << ti->second << '\n';*/
 	//-----------------------------------------------------
-
+=======
+>>>>>>> d86fc24ffb5357137036f067be6e31d518f1adaf
 	writeJSON(filename);
 	std::cout << "Write to JSON - OK" << std::endl;
 }
@@ -70,7 +72,8 @@ void CodeAnalyzer::jsonToStruct(json input)
 			if (it2.key() == "Ninstructions")
 			{
 				function_.Ninstructions = it2.value();
-			} else if (it2.key() == "variables")
+			}
+			else if(it2.key()=="variables")
 			{
 				json var_ = it2.value();
 				std::vector<Variable> variables_;
@@ -85,7 +88,8 @@ void CodeAnalyzer::jsonToStruct(json input)
 					variables_.push_back(v_);
 				}
 				function_.variables = variables_;
-			} else if (it2.key() == "instructions")
+			}
+			else if(it2.key() == "instructions")
 			{
 				json ins_ = it2.value();
 				std::vector<Instruction> instructions_;
@@ -142,15 +146,17 @@ void CodeAnalyzer::writeJSON(const std::string filename)
 	file_write += ".output.json";
 	file.open(file_write);
 
+<<<<<<< HEAD
 //  --------------  TESTE --------------
-/*	Vulnerability test;
-	test.type = "type";
-	test.fnname = "fnname";
-	vulnerabilities.push_back(test);
-	vulnerabilities.push_back(test);
-	vulnerabilities.push_back(test);*/
+	/*	Vulnerability test;
+	 test.type = "type";
+	 test.fnname = "fnname";
+	 vulnerabilities.push_back(test);
+	 vulnerabilities.push_back(test);
+	 vulnerabilities.push_back(test);*/
 // 	------------------------------------
-
+=======
+>>>>>>> d86fc24ffb5357137036f067be6e31d518f1adaf
 	while (vulnerabilities.size() != cont)
 	{
 		structToJson(output, vulnerabilities.at(cont));
@@ -175,9 +181,9 @@ void CodeAnalyzer::allocFunction(Function& func, unsigned int return_addr)
 {
 	unsigned int sp = std::get<1>(reg.getConstRegister("rsp"));
 
-	mem_stack.const_value.emplace(sp - 8, return_addr);
-	reg.addRegister(sp - 8, "rsp");
-	reg.addRegister(std::stoul(func.instructions[0].address, nullptr, 16), "rsi");
+	mem_stack.const_value.emplace(sp - 8, return_addr); //Insert the return address on the stack
+	reg.addRegister(sp - 8, "rsp"); //Update register rsp
+	reg.addRegister(std::stoul(func.instructions[0].address, nullptr, 16), "rsi"); 	//Change the register rsi to the address of the new function
 
 	for (auto &p : func.variables)
 	{
@@ -187,15 +193,89 @@ void CodeAnalyzer::allocFunction(Function& func, unsigned int return_addr)
 	}
 }
 
+// Desallocate the memory used by the function, and restore the values of registers rbp, rsp and rsi
 void CodeAnalyzer::desallocFunction(Function& func)
 {
 	unsigned int ebp = std::get<1>(reg.getConstRegister("rbp"));
 
+	reg.addRegister(ebp + 16, "rsp");
 	reg.addRegister(mem_stack.const_value[ebp], "rbp");
-	reg.addRegister(mem_stack.const_value[ebp - 8], "rsi");
+	reg.addRegister(mem_stack.const_value[ebp + 8], "rsi");
 
 	mem_stack.const_value.erase(mem_stack.const_value.begin(), mem_stack.const_value.upper_bound(ebp - 8));
 	mem_stack.var.erase(mem_stack.var.begin(), mem_stack.var.upper_bound(ebp - 8));
+}
+
+// Analyze the overflow, and what information is overflown
+void CodeAnalyzer::analyzeOverflow(Function* func, std::string func_name, Variable* arg, int overflow)
+{
+<<<<<<< HEAD
+	std::cout << overflow << std::endl;
+=======
+	/*
+
+	1-(Basic Analysis) what is the vulnerability, either VAROVERFLOW, RBPOVERFLOW, RETOVERFLOW;
+	2-(Advanced Analysis) what is the vulnerability, either INVALIDACCS, SCORRUPTION;
+	3-the dangerous function/instruction that causes the vulnerability;
+	4-which function of your program is vulnerable,
+	5-what is the address where the dangerous function/instruction is called;
+	6-(Basic Analysis) the overflowing buffer. In the case of VAROVERFLOW it should also state the overflown variable.
+	7-(Advanced Analysis) the overflowing buffer and the first address of the block(s) that is(are) overflown.
+	
+	(updated) Basic: gets, strcpy, strcat, fgets, strncpy, strncat
+	*/
+	if (func_name == "gets")
+	{
+		auto arg = std::get<1>(reg.getVarRegister("rdi"));
+>>>>>>> d86fc24ffb5357137036f067be6e31d518f1adaf
+
+	Vulnerability vuln;
+	vuln.address = func->instructions[func->current_inst].address;
+	vuln.fnname = func_name;
+	vuln.overflow_var = arg->name;
+	vuln.vuln_function = func->name;
+	vuln.type = "VAROVERFLOW";
+
+	int arg_relative_pos = std::stoi(arg->address.substr(3, arg->address.length()), nullptr, 16);
+	int relative_pos;
+
+	//Find all possible local variables that can be overflown
+	for (auto &p : func->variables)
+	{
+		if (overflow > 0)
+		{
+			relative_pos = std::stoi(p.address.substr(3, p.address.length()), nullptr, 16);
+
+			if (arg_relative_pos < relative_pos)
+			{
+				vuln.is_var_overflown = true;
+				vuln.overflown_var = p.name;
+				vulnerabilities.emplace_back(vuln);
+				overflow -= p.bytes;
+			}
+		} else
+		{
+			return;
+		}
+	}
+
+	vuln.is_var_overflown = false;
+
+	if (overflow > 0)
+	{
+		//Overflow of the rbp
+		vuln.type = "RBPOVERFLOW";
+		vulnerabilities.emplace_back(vuln);
+		overflow -= 8;
+	}
+
+	if (overflow > 0)
+	{
+		//Overflow of the return address
+		vuln.type = "RETOVERFLOW";
+		vulnerabilities.emplace_back(vuln);
+		overflow -= 8;
+	}
 }
 
 //Verify if the dangerous functions is actually vulnerable
@@ -205,76 +285,128 @@ void CodeAnalyzer::analyzeVulnFunction(Function *func, std::string func_name)
 	{
 		auto arg = std::get<1>(reg.getVarRegister("rdi"));
 
-		Vulnerability vuln;
-		vuln.address = func->instructions[func->current_inst].address;
-		vuln.fnname = "gets";
-		vuln.overflow_var = arg->name;
-		vuln.vuln_function = func->name;
-		vuln.type = "VAROVERFLOW";
-
-		int arg_relative_pos = std::stoi(arg->address.substr(3, arg->address.length()), nullptr, 16);
-		int relative_pos;
-
-		//Find all possible local variables that can be overflown
-		for (auto &p : func->variables)
-		{
-			relative_pos = std::stoi(p.address.substr(3, p.address.length()), nullptr, 16);
-
-			if (arg_relative_pos < relative_pos)
-			{
-				vuln.is_var_overflown = true;
-				vuln.overflown_var = p.name;
-				vulnerabilities.emplace_back(vuln);
-			}
-		}
-
-		vuln.is_var_overflown = false;
-		vuln.type = "RBPOVERFLOW";
-		vulnerabilities.emplace_back(vuln);
-
-		vuln.type = "RETOVERFLOW";
-		vulnerabilities.emplace_back(vuln);
+		analyzeOverflow(func, func_name, arg, 100000);
 
 	} else if (func_name == "fgets")
 	{
 		auto arg1 = std::get<1>(reg.getVarRegister("rdi"));
-		auto arg2 = std::get<1>(reg.getConstRegister("rsi"));
+		auto arg2 = std::get<1>(reg.getConstRegister("esi"));
 
-		std::cout << arg1->bytes << " " << arg2 << std::endl;
+		int overflow = arg2 - arg1->bytes;
 
-		if (arg1->bytes < arg2)
+		if (overflow > 0)
 		{
-			Vulnerability vuln;
-			vuln.address = func->instructions[func->current_inst].address;
-			vuln.fnname = "fgets";
-			vuln.overflow_var = arg1->name;
-			vuln.vuln_function = func->name;
-			vuln.type = "VAROVERFLOW";
-
-			int arg_relative_pos = std::stoi(arg1->address.substr(3, arg1->address.length()), nullptr, 16);
-			int relative_pos;
-
-			//Find all possible local variables that can be overflown
-			for (auto &p : func->variables)
-			{
-				relative_pos = std::stoi(p.address.substr(3, p.address.length()), nullptr, 16);
-
-				if (arg_relative_pos < relative_pos)
-				{
-					vuln.is_var_overflown = true;
-					vuln.overflown_var = p.name;
-					vulnerabilities.emplace_back(vuln);
-				}
-			}
-
-			vuln.is_var_overflown = false;
-			vuln.type = "RBPOVERFLOW";
-			vulnerabilities.emplace_back(vuln);
-
-			vuln.type = "RETOVERFLOW";
-			vulnerabilities.emplace_back(vuln);
+			analyzeOverflow(func, func_name, arg1, overflow);
 		}
+
+		arg1->bytes = arg2;
+
+	} else if (func_name == "strcpy")
+	{
+		auto arg1 = std::get<1>(reg.getVarRegister("rdi"));
+		auto arg2 = std::get<1>(reg.getVarRegister("rsi"));
+
+		int overflow = arg2->bytes - arg1->bytes;
+
+		std::cout << arg1->bytes << std::endl;
+		std::cout << arg2->bytes << std::endl;
+		std::cout << overflow << std::endl;
+
+		if (overflow > 0)
+		{
+			analyzeOverflow(func, func_name, arg1, overflow);
+		}
+
+		arg1->bytes = arg2->bytes;
+
+	} else if (func_name == "strcat")
+	{
+		auto arg1 = std::get<1>(reg.getVarRegister("rdi"));
+		auto arg2 = std::get<1>(reg.getVarRegister("rsi"));
+
+		int overflow = arg2->bytes - arg1->bytes;
+
+		if (overflow > 0)
+		{
+			analyzeOverflow(func, func_name, arg1, overflow);
+		}
+
+		arg1->bytes += arg2->bytes;
+
+	} else if (func_name == "strncpy")
+	{
+		auto arg1 = std::get<1>(reg.getVarRegister("rdi"));
+		auto arg3 = std::get<1>(reg.getConstRegister("rdx"));
+
+		int overflow = arg3 - arg1->bytes;
+
+		if (overflow > 0)
+		{
+			analyzeOverflow(func, func_name, arg1, overflow);
+		}
+
+		arg1->bytes = arg3;
+
+	} else if (func_name == "strncat")
+	{
+		auto arg1 = std::get<1>(reg.getVarRegister("rdi"));
+		auto arg3 = std::get<1>(reg.getConstRegister("rdx"));
+
+		int overflow = arg3 - arg1->bytes;
+
+		if (overflow > 0)
+		{
+			analyzeOverflow(func, func_name, arg1, overflow);
+		}
+
+		arg1->bytes = arg3;
 	}
+	else if(func_name == "strcpy")
+	{
+
+
+	}
+	else if(func_name =="strcat")
+	{
+
+	}
+	else if(func_name =="strncpy")
+	{
+
+	}
+	else if(func_name =="strncat")
+	{
+
+	}
+
+
+	/*
+	(updated) Advanced: sprintf, scanf, fscanf, snprintf, read
+	*/
+	else if(func_name =="sprintf")
+	{
+		std::cout << "Segunda etapa da implementação." << std::endl;
+	}
+	else if(func_name =="scanf")
+	{
+		std::cout << "Segunda etapa da implementação." << std::endl;
+	}
+	else if(func_name =="fscanf")
+	{
+		std::cout << "Segunda etapa da implementação." << std::endl;
+	}
+	else if(func_name =="snprintf")
+	{
+		std::cout << "Segunda etapa da implementação." << std::endl;
+	}
+	else if(func_name =="read")
+	{
+		std::cout << "Segunda etapa da implementação." << std::endl;
+	}
+	else{
+		std::cout << "Erro nenhuma função conhecida foi chamada." << std::endl;
+	}
+
 }
 
 //Analyze the function defined by <func>
@@ -283,7 +415,7 @@ void CodeAnalyzer::analyzeFunction(Function *func, std::stack<Function*> &stack_
 	Instruction current_inst;
 	bool leave = false;
 
-	while (func->current_inst < func->Ninstructions)
+	while (func->current_inst < func->Ninstructions) //iterate through all instructions specified in <func>
 	{
 		current_inst = func->instructions[func->current_inst];
 
@@ -294,7 +426,7 @@ void CodeAnalyzer::analyzeFunction(Function *func, std::stack<Function*> &stack_
 				std::string dest = current_inst.args["dest"];
 				std::string value = current_inst.args["value"];
 
-				auto pos = dest.find("[");
+				auto pos = dest.find("["); //the pointer is indicated by []
 
 				if (pos != std::string::npos) //The destination is a pointer
 				{
@@ -310,6 +442,7 @@ void CodeAnalyzer::analyzeFunction(Function *func, std::stack<Function*> &stack_
 
 					if (value[0] == '0' && value[1] == 'x') //mov [pointer], number
 					{
+						//Put the number on the memory stack
 						if (mem_stack.const_value.find(mem_pos) != mem_stack.const_value.end())
 						{
 							mem_stack.const_value[mem_pos] = std::stoul(value, nullptr, 16);
@@ -322,6 +455,7 @@ void CodeAnalyzer::analyzeFunction(Function *func, std::stack<Function*> &stack_
 					{
 						auto reg_value_const = reg.getConstRegister(value);
 
+						//Verify if the value stored in the register is const
 						if (std::get<0>(reg_value_const))
 						{
 							if (mem_stack.const_value.find(mem_pos) != mem_stack.const_value.end())
@@ -332,7 +466,7 @@ void CodeAnalyzer::analyzeFunction(Function *func, std::stack<Function*> &stack_
 							{
 								mem_stack.const_value.emplace(mem_pos, std::get<1>(reg_value_const));
 							}
-						} else
+						} else //If the value isn't a const, is a variable
 						{
 							auto reg_value = reg.getVarRegister(value);
 
@@ -367,6 +501,7 @@ void CodeAnalyzer::analyzeFunction(Function *func, std::stack<Function*> &stack_
 								int relative_pos = std::stoi(value.substr(3, value.length()), nullptr, 16);
 								unsigned int mem_pos = std::get<1>(reg.getConstRegister(reg_name)) + relative_pos;
 
+								//Find the value pointed by the pointer and puts it on the destination register
 								if (mem_stack.const_value.find(mem_pos) != mem_stack.const_value.end())
 								{
 									reg.addRegister(mem_stack.const_value[mem_pos], dest);
@@ -418,33 +553,34 @@ void CodeAnalyzer::analyzeFunction(Function *func, std::stack<Function*> &stack_
 					reg.addRegister(&(mem_stack.var[mem_pos]), dest);
 				}
 
-			}else if(current_inst.op == "add")
+			} else if (current_inst.op == "add")
 			{
 				std::string dest = current_inst.args["dest"];
 				std::string value = current_inst.args["value"];
 
-				if(dest == "rsp" || dest == "rbp")
+				if (dest == "rsp" || dest == "rbp") //Arithmetic opertaions only valid on rsp and rbp
 				{
 					reg.addRegister(std::get<1>(reg.getConstRegister(dest)) + std::stoul(value, nullptr, 16), dest);
 				}
 
-			}else if(current_inst.op == "sub")
+			} else if (current_inst.op == "sub")
 			{
 				std::string dest = current_inst.args["dest"];
 				std::string value = current_inst.args["value"];
 
-				if(dest == "rsp" || dest == "rbp")
+				if (dest == "rsp" || dest == "rbp")
 				{
 					reg.addRegister(std::get<1>(reg.getConstRegister(dest)) - std::stoul(value, nullptr, 16), dest);
 				}
-			}else if (current_inst.op == "call") //call <fnname>
+			} else if (current_inst.op == "call") //call <fnname>
 			{
 				std::string func_name = current_inst.args["fnname"];
-				func_name = func_name.substr(1, func_name.length() - 1); //Remove <> from the function name
+				func_name = func_name.substr(1, func_name.length() - 2); //Remove <> from the function name
 
 				if (functions.find(func_name) != functions.end()) //Verify if the function exist on the JSON
 				{
 					stack_func.emplace(&functions[func_name]); //Add the function to the stack
+					func->current_inst++;
 					return;
 				} else
 				{

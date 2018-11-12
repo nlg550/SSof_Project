@@ -1,0 +1,26 @@
+[
+    {
+        "address": "400539",
+        "fnname": "fgets",
+        "overflow_var": "buf",
+        "overflown_var": "control",
+        "type": "VAROVERFLOW",
+        "vuln_function": "main"
+    },
+    {
+        "address": "400539",
+        "fnname": "fgets",
+        "overflow_var": "buf",
+        "overflown_var": "control",
+        "type": "RBPOVERFLOW",
+        "vuln_function": "main"
+    },
+    {
+        "address": "400539",
+        "fnname": "fgets",
+        "overflow_var": "buf",
+        "overflown_var": "control",
+        "type": "RETOVERFLOW",
+        "vuln_function": "main"
+    }
+]
