@@ -175,7 +175,7 @@ void CodeAnalyzer::allocFunction(Function& func, unsigned int return_addr)
 
 	mem_stack.const_value.emplace(sp - 8, return_addr); //Insert the return address on the stack
 	reg.addRegister(sp - 8, "rsp"); //Update register rsp
-	reg.addRegister(std::stoul(func.instructions[0].address, nullptr, 16), "rsi"); 	//Change the register rsi to the address of the new function
+	reg.addRegister(std::stoul(func.instructions[0].address, nullptr, 16), "rsi"); //Change the register rsi to the address of the new function
 
 	for (auto &p : func.variables)
 	{
@@ -282,10 +282,6 @@ void CodeAnalyzer::analyzeVulnFunction(Function *func, std::string func_name)
 
 		int overflow = arg2->bytes - arg1->bytes;
 
-		std::cout << arg1->bytes << std::endl;
-		std::cout << arg2->bytes << std::endl;
-		std::cout << overflow << std::endl;
-
 		if (overflow > 0)
 		{
 			analyzeOverflow(func, func_name, arg1, overflow);
@@ -381,6 +377,14 @@ void CodeAnalyzer::analyzeFunction(Function *func, std::stack<Function*> &stack_
 						}
 					} else //mov [pointer], reg
 					{
+						auto is_x86 = false;
+
+						if (value[0] == 'e')
+						{
+							value[0] == 'r';
+							is_x86 = true;
+						}
+
 						auto reg_value_const = reg.getConstRegister(value);
 
 						//Verify if the value stored in the register is const
@@ -388,11 +392,23 @@ void CodeAnalyzer::analyzeFunction(Function *func, std::stack<Function*> &stack_
 						{
 							if (mem_stack.const_value.find(mem_pos) != mem_stack.const_value.end())
 							{
-								mem_stack.const_value[mem_pos] = std::get<1>(reg_value_const);
+								if (is_x86)
+								{
+									mem_stack.const_value[mem_pos] = std::get<1>(reg_value_const) & 0xFFFFFFFF;
+								} else
+								{
+									mem_stack.const_value[mem_pos] = std::get<1>(reg_value_const);
+								}
 
 							} else
 							{
-								mem_stack.const_value.emplace(mem_pos, std::get<1>(reg_value_const));
+								if (is_x86)
+								{
+									mem_stack.const_value.emplace(mem_pos, std::get<1>(reg_value_const) & 0xFFFFFFFF);
+								} else
+								{
+									mem_stack.const_value.emplace(mem_pos, std::get<1>(reg_value_const));
+								}
 							}
 						} else //If the value isn't a const, is a variable
 						{
@@ -413,6 +429,14 @@ void CodeAnalyzer::analyzeFunction(Function *func, std::stack<Function*> &stack_
 					}
 				} else //The destinantion is a register
 				{
+					auto is_x86_dest = false;
+
+					if (dest[0] == 'e')
+					{
+						dest[0] == 'r';
+						is_x86_dest = true;
+					}
+
 					if (value[0] == '0' && value[1] == 'x') //mov reg, number
 					{
 						reg.addRegister(std::stoul(value, nullptr, 16), dest);
@@ -432,8 +456,13 @@ void CodeAnalyzer::analyzeFunction(Function *func, std::stack<Function*> &stack_
 								//Find the value pointed by the pointer and puts it on the destination register
 								if (mem_stack.const_value.find(mem_pos) != mem_stack.const_value.end())
 								{
-									reg.addRegister(mem_stack.const_value[mem_pos], dest);
-
+									if (is_x86_dest)
+									{
+										reg.addRegister(mem_stack.const_value[mem_pos] & 0xFFFFFFFF, dest);
+									} else
+									{
+										reg.addRegister(mem_stack.const_value[mem_pos], dest);
+									}
 								} else if (mem_stack.var.find(mem_pos) != mem_stack.var.end())
 								{
 									reg.addRegister(&(mem_stack.var[mem_pos]), dest);
@@ -442,12 +471,25 @@ void CodeAnalyzer::analyzeFunction(Function *func, std::stack<Function*> &stack_
 
 						} else //mov reg, reg
 						{
+							auto is_x86_value = false;
+
+							if (value[0] == 'e')
+							{
+								value[0] == 'r';
+								is_x86_value = true;
+							}
+
 							auto reg_value_const = reg.getConstRegister(value);
 
 							if (std::get<0>(reg_value_const))
 							{
-								reg.addRegister(std::get<1>(reg_value_const), dest);
-
+								if(is_x86_value || is_x86_dest)
+								{
+									reg.addRegister(std::get<1>(reg_value_const) && 0xFFFFFFFF, dest);
+								}else
+								{
+									reg.addRegister(std::get<1>(reg_value_const), dest);
+								}
 							} else
 							{
 								auto reg_value = reg.getVarRegister(value);
@@ -509,6 +551,8 @@ void CodeAnalyzer::analyzeFunction(Function *func, std::stack<Function*> &stack_
 				{
 					stack_func.emplace(&functions[func_name]); //Add the function to the stack
 					func->current_inst++;
+					allocFunction(functions[func_name], std::stoul(func->instructions[func->current_inst].address, nullptr, 16));
+
 					return;
 				} else
 				{
@@ -594,14 +638,27 @@ void CodeAnalyzer::analyzeFunction(Function *func, std::stack<Function*> &stack_
 							}
 						} else
 						{
+							auto is_x86 = false;
+
+							if (value[0] == 'e')
+							{
+								value[0] == 'r';
+								is_x86 = true;
+							}
+
 							auto reg_value_const = reg.getConstRegister(value);
 
 							if (std::get<0>(reg_value_const))
 							{
 								if (mem_stack.const_value.find(sp) != mem_stack.const_value.end())
 								{
-									mem_stack.const_value[sp] = std::get<1>(reg_value_const);
-
+									if(is_x86)
+									{
+										mem_stack.const_value[sp] = std::get<1>(reg_value_const) & 0xFFFFFFFF;
+									}else
+									{
+										mem_stack.const_value[sp] = std::get<1>(reg_value_const);
+									}
 								} else
 								{
 									mem_stack.const_value.emplace(sp, std::get<1>(reg_value_const));

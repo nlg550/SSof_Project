@@ -1,1 +1,18 @@
-[]
+[
+    {
+        "address": "400581",
+        "fnname": "strcpy",
+        "overflow_var": "buf2",
+        "overflown_var": "",
+        "type": "RBPOVERFLOW",
+        "vuln_function": "fun1"
+    },
+    {
+        "address": "400581",
+        "fnname": "strcpy",
+        "overflow_var": "buf2",
+        "overflown_var": "",
+        "type": "RETOVERFLOW",
+        "vuln_function": "fun1"
+    }
+]
