@@ -4,7 +4,7 @@
 #include <vector>
 #include <map>
 
-/** 
+/**
 	Variable struct:
 		Definition of a variable (base on the JSON).
 */
@@ -15,7 +15,7 @@ struct Variable {
 	std::string address;
 };
 
-/** 
+/**
 	Instruction struct:
 		Definition of an instruction (based on the JSON).
 */
@@ -26,7 +26,7 @@ struct Instruction {
 	std::string address;
 };
 
-/** 
+/**
 	Function struct:
 		Definition of an function (based on the JSON).
 */
@@ -39,7 +39,7 @@ struct Function{
 	unsigned int current_inst;
 };
 
-/** 
+/**
 	Vulnerability struct:
 		Definition of a vulnerability (based on the JSON)
 */
@@ -49,8 +49,8 @@ struct Vulnerability {
 	std::string fnname;
 	std::string address;
 	std::string overflow_var;
-	bool is_var_overflown;
-	std::string overflown_var;
+	std::tuple<bool, std::string> overflown_var;
+	std::tuple<bool, std::string> overflown_addr;
 };
 
 struct MemoryStack{

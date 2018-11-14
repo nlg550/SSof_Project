@@ -188,7 +188,6 @@ void CodeAnalyzer::analyzeOverflow(Function* func, std::string func_name, Variab
 	vuln.fnname = func_name;
 	vuln.overflow_var = arg->name;
 	vuln.vuln_function = func->name;
-	vuln.type = "VAROVERFLOW";
 
 	std::sort(func->variables.begin(), func->variables.end(), [](Variable &lhs, Variable &rhs)
 	{
@@ -203,35 +202,55 @@ void CodeAnalyzer::analyzeOverflow(Function* func, std::string func_name, Variab
 		}
 	});
 
-	int arg_pos = std::stoi(arg->address.substr(3, arg->address.length()), nullptr, 16);
-	std::string arg_base = arg->address.substr(0, 2);
+	std::string base = arg->address.substr(0, 2); //Reference - Base Register
+	int pos = std::stoi(arg->address.substr(3, arg->address.length()), nullptr, 16); //Reference - Relative Position
+	unsigned int size = arg->bytes; //Reference size
 
 	//Find all possible local variables that can be overflown
 	for (auto &p : func->variables)
 	{
-		int pos = std::stoi(p.address.substr(3, p.address.length()), nullptr, 16);
-		std::string base = p.address.substr(0, 2);
+		std::string var_base = p.address.substr(0, 2); //Base register of the variable
+		int var_pos = std::stoi(p.address.substr(3, p.address.length()), nullptr, 16); //Relative position of the variable
 
-		if (base == arg_base)
+		vuln.overflown_addr = std::make_tuple(false, "");
+		vuln.overflown_var = std::make_tuple(false, "");
+
+		if (base == var_base) //Is using the same base?
 		{
-			if (pos > arg_pos)
+			if (pos < var_pos) //The position of the variable is greater than the reference position?
 			{
-				if (overflow > p.bytes)
-				{
-					vuln.is_var_overflown = true;
-					vuln.overflown_var = p.name;
-					vulnerabilities.emplace_back(vuln);
-					overflow -= p.bytes;
+				int mem_space = pos - var_pos - size; //Calculate the space between the variable and the reference
 
-				}else
+				if (mem_space > 0)
+				{
+					//Invalid Access
+					vuln.type = "INVALIDACC";
+					vuln.overflown_addr = std::make_tuple(true, var_base + std::to_string(var_pos - p.bytes));
+					vulnerabilities.emplace_back(vuln);
+				}
+
+				if (overflow > mem_space)
+				{
+					//Overflow of local variable
+					vuln.type = "VAROVERFLOW";
+					vuln.overflown_var = std::make_tuple(true, p.name);
+					vulnerabilities.emplace_back(vuln);
+					overflow -= p.bytes - mem_space;
+
+				} else
 				{
 					return;
 				}
+
+				//Update the reference position and base register
+				pos = var_pos;
+				base = var_base;
+				size = p.bytes;
 			}
 		}
 	}
 
-	vuln.is_var_overflown = false;
+	vuln.overflown_var = std::make_tuple(false, "");
 
 	if (overflow > 8)
 	{
@@ -341,14 +360,6 @@ void CodeAnalyzer::analyzeFunction(Function *func, std::stack<Function*> &stack_
 					std::string reg_name = dest.substr(0, 2);
 					int relative_pos = std::stoi(dest.substr(3, dest.length()), nullptr, 16);
 					unsigned int mem_pos = std::get<1>(reg.getConstRegister(reg_name)) + relative_pos;
-
-				if(mem_pos > std::get<1>(reg.getConstRegister("rsp")) || mem_pos <= std::get<1>(reg.getConstRegister("rbp")))
-				{
-					Vulnerability vuln;
-					vuln.address = current_inst.address;
-					vuln.type = "SCORRUPTION";
-					vuln.vuln_function = func->name;
-				}
 
 					if (value[0] == '0' && value[1] == 'x') //mov [pointer], number
 					{
