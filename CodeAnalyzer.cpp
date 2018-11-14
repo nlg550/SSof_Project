@@ -342,10 +342,13 @@ void CodeAnalyzer::analyzeFunction(Function *func, std::stack<Function*> &stack_
 					int relative_pos = std::stoi(dest.substr(3, dest.length()), nullptr, 16);
 					unsigned int mem_pos = std::get<1>(reg.getConstRegister(reg_name)) + relative_pos;
 
-//				if(mem_pos > std::get<1>(reg.getConstRegister("rsp")) || mem_pos <= std::get<1>(reg.getConstRegister("rbp")))
-//				{
-//
-//				}
+				if(mem_pos > std::get<1>(reg.getConstRegister("rsp")) || mem_pos <= std::get<1>(reg.getConstRegister("rbp")))
+				{
+					Vulnerability vuln;
+					vuln.address = current_inst.address;
+					vuln.type = "SCORRUPTION";
+					vuln.vuln_function = func->name;
+				}
 
 					if (value[0] == '0' && value[1] == 'x') //mov [pointer], number
 					{

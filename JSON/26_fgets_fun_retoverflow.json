@@ -47,7 +47,7 @@
                 "pos": 3,
                 "args": {
                     "dest": "DWORD PTR [rbp-0x4]",
-                    "value": "0xd"
+                    "value": "0x1a"
                 },
                 "address": "400591"
             },
@@ -75,7 +75,7 @@
                 "pos": 6,
                 "args": {
                     "dest": "esi",
-                    "value": "0x14"
+                    "value": "0x19"
                 },
                 "address": "4005a3"
             },

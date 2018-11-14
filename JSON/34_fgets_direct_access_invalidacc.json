@@ -1,6 +1,6 @@
 {
     "main": {
-        "Ninstructions": 12,
+        "Ninstructions": 13,
         "variables": [
             {
                 "bytes": 4,
@@ -11,7 +11,7 @@
             {
                 "bytes": 64,
                 "type": "buffer",
-                "name": "buf",
+                "name": "buf1",
                 "address": "rbp-0x50"
             }
         ],
@@ -47,7 +47,7 @@
                 "pos": 3,
                 "args": {
                     "dest": "DWORD PTR [rbp-0x4]",
-                    "value": "0x2"
+                    "value": "0x22"
                 },
                 "address": "40051f"
             },
@@ -75,7 +75,7 @@
                 "pos": 6,
                 "args": {
                     "dest": "esi",
-                    "value": "0x41"
+                    "value": "0x20"
                 },
                 "address": "400531"
             },
@@ -101,20 +101,29 @@
                 "op": "mov",
                 "pos": 9,
                 "args": {
-                    "dest": "eax",
-                    "value": "0x0"
+                    "dest": "BYTE PTR [rbp-0xf]",
+                    "value": "0x61"
                 },
                 "address": "40053e"
             },
             {
-                "op": "leave",
+                "op": "mov",
                 "pos": 10,
-                "address": "400543"
+                "args": {
+                    "dest": "eax",
+                    "value": "0x0"
+                },
+                "address": "400542"
+            },
+            {
+                "op": "leave",
+                "pos": 11,
+                "address": "400547"
             },
             {
                 "op": "ret",
-                "pos": 11,
-                "address": "400544"
+                "pos": 12,
+                "address": "400548"
             }
         ]
     }

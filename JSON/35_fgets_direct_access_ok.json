@@ -1,6 +1,6 @@
 {
     "main": {
-        "Ninstructions": 12,
+        "Ninstructions": 13,
         "variables": [
             {
                 "bytes": 4,
@@ -11,8 +11,14 @@
             {
                 "bytes": 64,
                 "type": "buffer",
-                "name": "buf",
-                "address": "rbp-0x50"
+                "name": "buf1",
+                "address": "rbp-0x70"
+            },
+            {
+                "bytes": 32,
+                "type": "buffer",
+                "name": "buf2",
+                "address": "rbp-0x30"
             }
         ],
         "instructions": [
@@ -38,7 +44,7 @@
                 "pos": 2,
                 "args": {
                     "dest": "rsp",
-                    "value": "0x50"
+                    "value": "0x70"
                 },
                 "address": "40051b"
             },
@@ -47,7 +53,7 @@
                 "pos": 3,
                 "args": {
                     "dest": "DWORD PTR [rbp-0x4]",
-                    "value": "0x5"
+                    "value": "0x23"
                 },
                 "address": "40051f"
             },
@@ -66,7 +72,7 @@
                 "pos": 5,
                 "args": {
                     "dest": "rax",
-                    "value": "[rbp-0x50]"
+                    "value": "[rbp-0x70]"
                 },
                 "address": "40052d"
             },
@@ -75,7 +81,7 @@
                 "pos": 6,
                 "args": {
                     "dest": "esi",
-                    "value": "0x59"
+                    "value": "0x20"
                 },
                 "address": "400531"
             },
@@ -101,20 +107,29 @@
                 "op": "mov",
                 "pos": 9,
                 "args": {
-                    "dest": "eax",
-                    "value": "0x0"
+                    "dest": "BYTE PTR [rbp-0x2f]",
+                    "value": "0x61"
                 },
                 "address": "40053e"
             },
             {
-                "op": "leave",
+                "op": "mov",
                 "pos": 10,
-                "address": "400543"
+                "args": {
+                    "dest": "eax",
+                    "value": "0x0"
+                },
+                "address": "400542"
+            },
+            {
+                "op": "leave",
+                "pos": 11,
+                "address": "400547"
             },
             {
                 "op": "ret",
-                "pos": 11,
-                "address": "400544"
+                "pos": 12,
+                "address": "400548"
             }
         ]
     }

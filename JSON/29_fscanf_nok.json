@@ -1,6 +1,6 @@
 {
     "main": {
-        "Ninstructions": 12,
+        "Ninstructions": 13,
         "variables": [
             {
                 "bytes": 4,
@@ -9,10 +9,10 @@
                 "address": "rbp-0x4"
             },
             {
-                "bytes": 64,
+                "bytes": 48,
                 "type": "buffer",
-                "name": "buf",
-                "address": "rbp-0x50"
+                "name": "buf1",
+                "address": "rbp-0x40"
             }
         ],
         "instructions": [
@@ -22,7 +22,7 @@
                 "args": {
                     "value": "rbp"
                 },
-                "address": "400517"
+                "address": "400547"
             },
             {
                 "op": "mov",
@@ -31,53 +31,54 @@
                     "dest": "rbp",
                     "value": "rsp"
                 },
-                "address": "400518"
+                "address": "400548"
             },
             {
                 "op": "sub",
                 "pos": 2,
                 "args": {
                     "dest": "rsp",
-                    "value": "0x50"
+                    "value": "0x40"
                 },
-                "address": "40051b"
+                "address": "40054b"
             },
             {
                 "op": "mov",
                 "pos": 3,
                 "args": {
                     "dest": "DWORD PTR [rbp-0x4]",
-                    "value": "0x4"
+                    "value": "0x1d"
                 },
-                "address": "40051f"
+                "address": "40054f"
             },
             {
                 "op": "mov",
                 "pos": 4,
                 "args": {
-                    "dest": "rdx",
+                    "dest": "rax",
                     "obs": "# 601030 <stdin@@GLIBC_2.2.5>",
-                    "value": "QWORD PTR [rip+0x200b03]"
+                    "value": "QWORD PTR [rip+0x200ad3]"
                 },
-                "address": "400526"
+                "address": "400556"
             },
             {
                 "op": "lea",
                 "pos": 5,
                 "args": {
-                    "dest": "rax",
-                    "value": "[rbp-0x50]"
+                    "dest": "rdx",
+                    "value": "[rbp-0x40]"
                 },
-                "address": "40052d"
+                "address": "40055d"
             },
             {
-                "op": "mov",
+                "op": "lea",
                 "pos": 6,
                 "args": {
-                    "dest": "esi",
-                    "value": "0x51"
+                    "dest": "rsi",
+                    "obs": "%s",
+                    "value": "[rip+0x9c]"
                 },
-                "address": "400531"
+                "address": "400561"
             },
             {
                 "op": "mov",
@@ -86,35 +87,44 @@
                     "dest": "rdi",
                     "value": "rax"
                 },
-                "address": "400536"
-            },
-            {
-                "op": "call",
-                "pos": 8,
-                "args": {
-                    "fnname": "<fgets@plt>",
-                    "address": "400430"
-                },
-                "address": "400539"
+                "address": "400568"
             },
             {
                 "op": "mov",
-                "pos": 9,
+                "pos": 8,
                 "args": {
                     "dest": "eax",
                     "value": "0x0"
                 },
-                "address": "40053e"
+                "address": "40056b"
+            },
+            {
+                "op": "call",
+                "pos": 9,
+                "args": {
+                    "fnname": "<__isoc99_fscanf@plt>",
+                    "address": "400460"
+                },
+                "address": "400570"
+            },
+            {
+                "op": "mov",
+                "pos": 10,
+                "args": {
+                    "dest": "eax",
+                    "value": "0x0"
+                },
+                "address": "400575"
             },
             {
                 "op": "leave",
-                "pos": 10,
-                "address": "400543"
+                "pos": 11,
+                "address": "40057a"
             },
             {
                 "op": "ret",
-                "pos": 11,
-                "address": "400544"
+                "pos": 12,
+                "address": "40057b"
             }
         ]
     }
