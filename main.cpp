@@ -6,7 +6,7 @@
 
 int main(int argc, char *argv[]) {
 
-	CodeAnalyzer Code("./JSON/test14.json");
+	CodeAnalyzer Code("./JSON/test04.json");
 
 	return 0;
 }

@@ -8,6 +8,7 @@
 #include <iostream>
 #include <fstream>
 #include <tuple>
+#include <algorithm>
 
 #include "json.hpp" //JSON Library
 #include "Registers.hpp"

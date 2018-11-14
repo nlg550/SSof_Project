@@ -3,29 +3,20 @@
 const std::string CodeAnalyzer::vuln_functions[N_DANGEROUS_FUNC] = { "gets", "strcpy", "strcat", "sprintf", "scanf",
 		"fscanf", "fgets", "strncpy", "strncat", "snprintf", "read" };
 
-/** 
+/**
  Constructor of CodeAnalyzer Class
  */
 CodeAnalyzer::CodeAnalyzer(const std::string filename)
 {
 	readJSON(filename);
 	std::cout << "Read from JSON - OK" << std::endl;
-
 	analyze();
 	std::cout << "Analysis - OK" << std::endl;
-
-	//---------------------- TESTE --------------------
-	/*	std::map<std::string, Function>::iterator it = functions.begin();
-	 std::cout << "Functions:\n";
-	 std::map<std::string, std::string>::iterator ti = it->second.instructions[0].args.begin();
-	 for (it = functions.begin(); it != functions.end(); ++it)
-	 std::cout << it->first << " : " << "- " << ti->first << " : " << ti->second << '\n';*/
-	//-----------------------------------------------------
 	writeJSON(filename);
 	std::cout << "Write to JSON - OK" << std::endl;
 }
 
-/** 
+/**
  Destructor of CodeAnalyzer Class
  */
 CodeAnalyzer::~CodeAnalyzer()
@@ -34,7 +25,7 @@ CodeAnalyzer::~CodeAnalyzer()
 	functions.clear();
 }
 
-/** 
+/**
  readJSON Function:
  This function is responsible to read a JSON file
  */
@@ -53,7 +44,7 @@ void CodeAnalyzer::readJSON(const std::string filename)
 	jsonToStruct(input);
 }
 
-/** 
+/**
  jsonToStruct Function:
  This function is responsible to transform a json variable in a struct variable
  */
@@ -127,38 +118,27 @@ void CodeAnalyzer::jsonToStruct(json input)
 
 }
 
-/** 
+/**
  writeJSON Function:
  This function is responsible to write in a JSON file the vulnerabilities found.
  */
 void CodeAnalyzer::writeJSON(const std::string filename)
 {
 	json output = json::array();
-	int cont = 0;
 	std::ofstream file;
 	std::string file_write = filename;
 	file_write.erase(file_write.length() - 5, file_write.length());
 	file_write += ".output.json";
 	file.open(file_write);
 
-//  --------------  TESTE --------------
-	/*	Vulnerability test;
-	 test.type = "type";
-	 test.fnname = "fnname";
-	 vulnerabilities.push_back(test);
-	 vulnerabilities.push_back(test);
-	 vulnerabilities.push_back(test);*/
-// 	------------------------------------
-	while (vulnerabilities.size() != cont)
-	{
-		structToJson(output, vulnerabilities.at(cont));
-		cont++;
-	}
+	for (auto &p : vulnerabilities)
+		structToJson(output, p);
+
 	file << output.dump(4) << std::endl;
 	file.close();
 }
 
-/** 
+/**
  structToJson Function:
  This function is responsible to transform a struct variabl in a JSON variable.
  */
@@ -201,6 +181,8 @@ void CodeAnalyzer::desallocFunction(Function& func)
 // Analyze the overflow, and what information is overflown
 void CodeAnalyzer::analyzeOverflow(Function* func, std::string func_name, Variable* arg, int overflow)
 {
+	if (overflow <= 0) return; //if there isn't any overflow, return
+
 	Vulnerability vuln;
 	vuln.address = func->instructions[func->current_inst].address;
 	vuln.fnname = func_name;
@@ -208,32 +190,50 @@ void CodeAnalyzer::analyzeOverflow(Function* func, std::string func_name, Variab
 	vuln.vuln_function = func->name;
 	vuln.type = "VAROVERFLOW";
 
-	int arg_relative_pos = std::stoi(arg->address.substr(3, arg->address.length()), nullptr, 16);
-	int relative_pos;
+	std::sort(func->variables.begin(), func->variables.end(), [](Variable &lhs, Variable &rhs)
+	{
+		if(lhs.address.substr(0, 2) == rhs.address.substr(0, 2))
+		{
+			int a = std::stoi(lhs.address.substr(3, lhs.address.length()), nullptr, 16);
+			int b = std::stoi(rhs.address.substr(3, rhs.address.length()), nullptr, 16);
+			return a < b;
+		} else
+		{
+			return lhs.address.substr(0, 2) > rhs.address.substr(0, 2);
+		}
+	});
+
+	int arg_pos = std::stoi(arg->address.substr(3, arg->address.length()), nullptr, 16);
+	std::string arg_base = arg->address.substr(0, 2);
 
 	//Find all possible local variables that can be overflown
 	for (auto &p : func->variables)
 	{
-		if (overflow > 0)
-		{
-			relative_pos = std::stoi(p.address.substr(3, p.address.length()), nullptr, 16);
+		int pos = std::stoi(p.address.substr(3, p.address.length()), nullptr, 16);
+		std::string base = p.address.substr(0, 2);
 
-			if (arg_relative_pos < relative_pos)
-			{
-				vuln.is_var_overflown = true;
-				vuln.overflown_var = p.name;
-				vulnerabilities.emplace_back(vuln);
-				overflow -= p.bytes;
-			}
-		} else
+		if (base == arg_base)
 		{
-			return;
+			if (pos > arg_pos)
+			{
+				if (overflow > p.bytes)
+				{
+					vuln.is_var_overflown = true;
+					vuln.overflown_var = p.name;
+					vulnerabilities.emplace_back(vuln);
+					overflow -= p.bytes;
+
+				}else
+				{
+					return;
+				}
+			}
 		}
 	}
 
 	vuln.is_var_overflown = false;
 
-	if (overflow > 0)
+	if (overflow > 8)
 	{
 		//Overflow of the rbp
 		vuln.type = "RBPOVERFLOW";
@@ -241,7 +241,7 @@ void CodeAnalyzer::analyzeOverflow(Function* func, std::string func_name, Variab
 		overflow -= 8;
 	}
 
-	if (overflow > 0)
+	if (overflow > 8)
 	{
 		//Overflow of the return address
 		vuln.type = "RETOVERFLOW";
@@ -266,10 +266,7 @@ void CodeAnalyzer::analyzeVulnFunction(Function *func, std::string func_name)
 
 		int overflow = arg2 - arg1->bytes;
 
-		if (overflow > 0)
-		{
-			analyzeOverflow(func, func_name, arg1, overflow);
-		}
+		analyzeOverflow(func, func_name, arg1, overflow);
 
 		arg1->bytes = arg2;
 
@@ -280,10 +277,7 @@ void CodeAnalyzer::analyzeVulnFunction(Function *func, std::string func_name)
 
 		int overflow = arg2->bytes - arg1->bytes;
 
-		if (overflow > 0)
-		{
-			analyzeOverflow(func, func_name, arg1, overflow);
-		}
+		analyzeOverflow(func, func_name, arg1, overflow);
 
 		arg1->bytes = arg2->bytes;
 
@@ -294,10 +288,7 @@ void CodeAnalyzer::analyzeVulnFunction(Function *func, std::string func_name)
 
 		int overflow = arg2->bytes - arg1->bytes;
 
-		if (overflow > 0)
-		{
-			analyzeOverflow(func, func_name, arg1, overflow);
-		}
+		analyzeOverflow(func, func_name, arg1, overflow);
 
 		arg1->bytes += arg2->bytes;
 
@@ -308,10 +299,7 @@ void CodeAnalyzer::analyzeVulnFunction(Function *func, std::string func_name)
 
 		int overflow = arg3 - arg1->bytes;
 
-		if (overflow > 0)
-		{
-			analyzeOverflow(func, func_name, arg1, overflow);
-		}
+		analyzeOverflow(func, func_name, arg1, overflow);
 
 		arg1->bytes = arg3;
 
@@ -322,10 +310,7 @@ void CodeAnalyzer::analyzeVulnFunction(Function *func, std::string func_name)
 
 		int overflow = arg3 - arg1->bytes;
 
-		if (overflow > 0)
-		{
-			analyzeOverflow(func, func_name, arg1, overflow);
-		}
+		analyzeOverflow(func, func_name, arg1, overflow);
 
 		arg1->bytes = arg3;
 	}
@@ -481,10 +466,10 @@ void CodeAnalyzer::analyzeFunction(Function *func, std::stack<Function*> &stack_
 
 							if (std::get<0>(reg_value_const))
 							{
-								if(is_x86_value || is_x86_dest)
+								if (is_x86_value || is_x86_dest)
 								{
 									reg.addRegister(std::get<1>(reg_value_const) && 0xFFFFFFFF, dest);
-								}else
+								} else
 								{
 									reg.addRegister(std::get<1>(reg_value_const), dest);
 								}
@@ -549,7 +534,8 @@ void CodeAnalyzer::analyzeFunction(Function *func, std::stack<Function*> &stack_
 				{
 					stack_func.emplace(&functions[func_name]); //Add the function to the stack
 					func->current_inst++;
-					allocFunction(functions[func_name], std::stoul(func->instructions[func->current_inst].address, nullptr, 16));
+					allocFunction(functions[func_name],
+							std::stoul(func->instructions[func->current_inst].address, nullptr, 16));
 
 					return;
 				} else
@@ -650,10 +636,10 @@ void CodeAnalyzer::analyzeFunction(Function *func, std::stack<Function*> &stack_
 							{
 								if (mem_stack.const_value.find(sp) != mem_stack.const_value.end())
 								{
-									if(is_x86)
+									if (is_x86)
 									{
 										mem_stack.const_value[sp] = std::get<1>(reg_value_const) & 0xFFFFFFFF;
-									}else
+									} else
 									{
 										mem_stack.const_value[sp] = std::get<1>(reg_value_const);
 									}
