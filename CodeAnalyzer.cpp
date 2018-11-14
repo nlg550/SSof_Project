@@ -189,6 +189,7 @@ void CodeAnalyzer::analyzeOverflow(Function* func, std::string func_name, Variab
 	vuln.overflow_var = arg->name;
 	vuln.vuln_function = func->name;
 
+	//Sort the variables according with their relative address
 	std::sort(func->variables.begin(), func->variables.end(), [](Variable &lhs, Variable &rhs)
 	{
 		if(lhs.address.substr(0, 2) == rhs.address.substr(0, 2))
@@ -219,7 +220,7 @@ void CodeAnalyzer::analyzeOverflow(Function* func, std::string func_name, Variab
 		{
 			if (pos < var_pos) //The position of the variable is greater than the reference position?
 			{
-				int mem_space = pos - var_pos - size; //Calculate the space between the variable and the reference
+				int mem_space = var_pos - pos - size; //Calculate the space between the variable and the reference
 
 				if (mem_space > 0)
 				{
@@ -235,7 +236,8 @@ void CodeAnalyzer::analyzeOverflow(Function* func, std::string func_name, Variab
 					vuln.type = "VAROVERFLOW";
 					vuln.overflown_var = std::make_tuple(true, p.name);
 					vulnerabilities.emplace_back(vuln);
-					overflow -= p.bytes - mem_space;
+					overflow -= (p.bytes + mem_space); 	//Subract from the overflow the number of bytes used by the variable
+														//(including the empty space)
 
 				} else
 				{
@@ -251,6 +253,7 @@ void CodeAnalyzer::analyzeOverflow(Function* func, std::string func_name, Variab
 	}
 
 	vuln.overflown_var = std::make_tuple(false, "");
+	vuln.overflown_addr = std::make_tuple(false, "");
 
 	if (overflow > 8)
 	{

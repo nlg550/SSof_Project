@@ -4,6 +4,17 @@
         "fnname": "strcpy",
         "overflow_var": "buf2",
         "overflown_var": [
+            false,
+            ""
+        ],
+        "type": "INVALIDACC",
+        "vuln_function": "main"
+    },
+    {
+        "address": "40059c",
+        "fnname": "strcpy",
+        "overflow_var": "buf2",
+        "overflown_var": [
             true,
             "control"
         ],
