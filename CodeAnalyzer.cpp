@@ -388,7 +388,7 @@ void CodeAnalyzer::analyzeFunction(Function *func, std::stack<Function*> &stack_
 
 						if (value[0] == 'e')
 						{
-							value[0] == 'r';
+							value = "r" + value.substr(1, value.length());
 							is_x86 = true;
 						}
 
@@ -440,13 +440,16 @@ void CodeAnalyzer::analyzeFunction(Function *func, std::stack<Function*> &stack_
 
 					if (dest[0] == 'e')
 					{
-						dest[0] == 'r';
+						dest = "r" + dest.substr(1, dest.length());
 						is_x86_dest = true;
 					}
 
 					if (value[0] == '0' && value[1] == 'x') //mov reg, number
 					{
 						reg.addRegister(std::stoul(value, nullptr, 16), dest);
+
+						std::cout << dest << " " << std::get<1>(reg.getConstRegister(dest)) << std::endl;
+
 					} else
 					{
 						auto pos = value.find("[");
@@ -482,7 +485,7 @@ void CodeAnalyzer::analyzeFunction(Function *func, std::stack<Function*> &stack_
 
 							if (value[0] == 'e')
 							{
-								value[0] == 'r';
+								value = "r" + value.substr(1, value.length());
 								is_x86_value = true;
 							}
 
@@ -650,7 +653,7 @@ void CodeAnalyzer::analyzeFunction(Function *func, std::stack<Function*> &stack_
 
 							if (value[0] == 'e')
 							{
-								value[0] == 'r';
+								value = "r" + value.substr(1, value.length());
 								is_x86 = true;
 							}
 

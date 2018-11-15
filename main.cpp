@@ -6,7 +6,7 @@
 
 int main(int argc, char *argv[]) {
 
-	CodeAnalyzer Code("./JSON/04_fgets_strcpy_nok_rbpoverflow.json");
+	CodeAnalyzer Code("./JSON/34_fgets_direct_access_invalidacc.json");
 
 	return 0;
 }

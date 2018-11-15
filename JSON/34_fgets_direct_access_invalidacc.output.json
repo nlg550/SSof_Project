@@ -1,9 +1,1 @@
-[
-    {
-        "overflown_address": "rbp-0xf",
-        "op": "mov",
-        "vuln_function": "main",
-        "address": "40053e",
-        "vulnerability": "INVALIDACCS"
-    }
-]
+[]
