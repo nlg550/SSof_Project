@@ -448,8 +448,6 @@ void CodeAnalyzer::analyzeFunction(Function *func, std::stack<Function*> &stack_
 					{
 						reg.addRegister(std::stoul(value, nullptr, 16), dest);
 
-						std::cout << dest << " " << std::get<1>(reg.getConstRegister(dest)) << std::endl;
-
 					} else
 					{
 						auto pos = value.find("[");
