@@ -9,6 +9,8 @@
 #include <fstream>
 #include <tuple>
 #include <algorithm>
+#include <iomanip>
+#include <sstream>
 
 #include "json.hpp" //JSON Library
 #include "Registers.hpp"
