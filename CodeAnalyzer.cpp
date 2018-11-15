@@ -255,7 +255,7 @@ void CodeAnalyzer::analyzeOverflow(Function* func, std::string func_name, Variab
 	vuln.overflown_var = std::make_tuple(false, "");
 	vuln.overflown_addr = std::make_tuple(false, "");
 
-	if (overflow > 8)
+	if (overflow > 0)
 	{
 		//Overflow of the rbp
 		vuln.type = "RBPOVERFLOW";
@@ -263,12 +263,19 @@ void CodeAnalyzer::analyzeOverflow(Function* func, std::string func_name, Variab
 		overflow -= 8;
 	}
 
-	if (overflow > 8)
+	if (overflow > 0)
 	{
 		//Overflow of the return address
 		vuln.type = "RETOVERFLOW";
 		vulnerabilities.emplace_back(vuln);
 		overflow -= 8;
+	}
+
+	if(overflow > 0)
+	{
+		vuln.type = "SCORRUPTION";
+		vuln.overflown_addr = std::make_tuple(true, "rbp+0x10");
+		vulnerabilities.emplace_back(vuln);
 	}
 }
 
