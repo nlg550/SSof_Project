@@ -6,7 +6,7 @@
 
 int main(int argc, char *argv[]) {
 
-	CodeAnalyzer Code("./JSON/34_fgets_direct_access_invalidacc.json");
+	CodeAnalyzer Code(argv[1]);
 
 	return 0;
 }
