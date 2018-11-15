@@ -220,16 +220,15 @@ void CodeAnalyzer::analyzeOverflow(Function* func, std::string func_name, Variab
 
 			if (mem_space > 0)
 			{
-				std::string tmp = [](int pos)
+				//Invalid Access
+				vuln.type = "INVALIDACC";
+				vuln.overflown_addr = std::make_tuple(true, [](int pos)
 				{
 					std::stringstream ss;
 					ss << "rbp" << std::hex << std::showbase << pos;
 					return ss.str();
-				}(var_pos - p.bytes);
+				}(var_pos - p.bytes));
 
-				//Invalid Access
-				vuln.type = "INVALIDACC";
-				vuln.overflown_addr = std::make_tuple(true, tmp);
 				vulnerabilities.emplace_back(vuln);
 			}
 
@@ -292,7 +291,7 @@ void CodeAnalyzer::analyzeVulnFunction(Function *func, std::string func_name)
 	} else if (func_name == "fgets")
 	{
 		auto arg1 = std::get<1>(reg.getVarRegister("rdi"));
-		auto arg2 = std::get<1>(reg.getConstRegister("esi"));
+		auto arg2 = std::get<1>(reg.getConstRegister("rsi"));
 
 		int overflow = arg2 - arg1->bytes;
 
