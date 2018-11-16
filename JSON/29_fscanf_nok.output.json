@@ -1,0 +1,40 @@
+[
+    {
+        "address": "400570",
+        "fnname": "__isoc99_fscanf",
+        "overflow_var": "buf1",
+        "overflown_addr": "rbp-0x10",
+        "vuln_function": "main",
+        "vulnerability": "INVALIDACC"
+    },
+    {
+        "address": "400570",
+        "fnname": "__isoc99_fscanf",
+        "overflow_var": "buf1",
+        "overflown_var": "control",
+        "vuln_function": "main",
+        "vulnerability": "VAROVERFLOW"
+    },
+    {
+        "address": "400570",
+        "fnname": "__isoc99_fscanf",
+        "overflow_var": "buf1",
+        "vuln_function": "main",
+        "vulnerability": "RBPOVERFLOW"
+    },
+    {
+        "address": "400570",
+        "fnname": "__isoc99_fscanf",
+        "overflow_var": "buf1",
+        "vuln_function": "main",
+        "vulnerability": "RETOVERFLOW"
+    },
+    {
+        "address": "400570",
+        "fnname": "__isoc99_fscanf",
+        "overflow_var": "buf1",
+        "overflown_addr": "rbp+0x10",
+        "vuln_function": "main",
+        "vulnerability": "SCORRUPTION"
+    }
+]

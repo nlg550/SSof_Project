@@ -23,9 +23,6 @@ using json = nlohmann::json;
 
 class CodeAnalyzer {
 private:
-	//All the dangerous functions to be consider
-	static const std::string vuln_functions[N_DANGEROUS_FUNC];
-
 	MemoryStack mem_stack;
 	Registers reg;
 
@@ -36,7 +33,7 @@ private:
 	void desallocFunction(Function &func);
 	void analyze();
 	void analyzeFunction(Function *func, std::stack<Function*> &stack_func);
-	void analyzeVulnFunction(Function *func, std::string func_name);
+	void analyzeCalledFunction(Function *func, std::string func_name);
 	void analyzeOverflow(Function *func, std::string func_name, Variable *arg, int overflow);
 
 	void readJSON(const std::string filename);

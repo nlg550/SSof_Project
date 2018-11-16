@@ -1,10 +1,7 @@
 #include "CodeAnalyzer.hpp"
 
-const std::string CodeAnalyzer::vuln_functions[N_DANGEROUS_FUNC] = {"strcpy", "strcat", "sprintf",
-		"fscanf", "fgets", "strncpy", "strncat", "snprintf", "read", "gets" , "scanf"};
-
 /**
- Constructor of CodeAnalyzer Class
+ 	 Constructor of CodeAnalyzer Class
  */
 CodeAnalyzer::CodeAnalyzer(const std::string filename)
 {
@@ -17,7 +14,7 @@ CodeAnalyzer::CodeAnalyzer(const std::string filename)
 }
 
 /**
- Destructor of CodeAnalyzer Class
+ 	 Destructor of CodeAnalyzer Class
  */
 CodeAnalyzer::~CodeAnalyzer()
 {
@@ -26,8 +23,8 @@ CodeAnalyzer::~CodeAnalyzer()
 }
 
 /**
- readJSON Function:
- This function is responsible to read a JSON file
+ 	 readJSON Function:
+ 	 This function is responsible to read a JSON file and import the content of the file to a JSON structure
  */
 void CodeAnalyzer::readJSON(const std::string filename)
 {
@@ -45,8 +42,8 @@ void CodeAnalyzer::readJSON(const std::string filename)
 }
 
 /**
- jsonToStruct Function:
- This function is responsible to transform a json variable in a struct variable
+ 	 jsonToStruct Function:
+ 	 This function is responsible to transform a JSON structure into a structure that can be more easily manipulated
  */
 void CodeAnalyzer::jsonToStruct(json input)
 {
@@ -121,8 +118,8 @@ void CodeAnalyzer::jsonToStruct(json input)
 }
 
 /**
- writeJSON Function:
- This function is responsible to write in a JSON file the vulnerabilities found.
+ 	 writeJSON Function:
+ 	 This function is responsible to write in a JSON file the vulnerabilities found.
  */
 void CodeAnalyzer::writeJSON(const std::string filename)
 {
@@ -141,8 +138,8 @@ void CodeAnalyzer::writeJSON(const std::string filename)
 }
 
 /**
- structToJson Function:
- This function is responsible to transform a struct variabl in a JSON variable.
+ 	 structToJson Function:
+ 	 This function is responsible to transform a vulnerability struct to a JSON format
  */
 void CodeAnalyzer::structToJson(json& output, const Vulnerability& vuln)
 {
@@ -163,7 +160,10 @@ void CodeAnalyzer::structToJson(json& output, const Vulnerability& vuln)
 	}
 }
 
-// Allocate the memory stack and the register for the function <func>
+/**
+ 	allocFunction Function:
+	Allocate the memory stack and the register for the function <func>
+ */
 void CodeAnalyzer::allocFunction(Function& func, uint64_t return_addr)
 {
 	uint64_t sp = std::get<1>(reg.getConstRegister("rsp"));
@@ -182,7 +182,11 @@ void CodeAnalyzer::allocFunction(Function& func, uint64_t return_addr)
 	}
 }
 
-// Desallocate the memory used by the function, and restore the values of registers rbp, rsp and rsi
+/**
+ 	desallocFunction Function:
+	Desallocate the memory used by the function, and restore the values of registers rbp, rsp and rsi
+ */
+
 void CodeAnalyzer::desallocFunction(Function& func)
 {
 	unsigned int ebp = std::get<1>(reg.getConstRegister("rbp"));
@@ -195,7 +199,10 @@ void CodeAnalyzer::desallocFunction(Function& func)
 	mem_stack.var.erase(mem_stack.var.begin(), mem_stack.var.upper_bound(ebp - 8));
 }
 
-// Analyze the overflow, and what information is overflown
+/**
+ 	analyzeOverflow Function:
+	Analyse the overflow, and determine which information is overflown
+ */
 void CodeAnalyzer::analyzeOverflow(Function* func, std::string func_name, Variable* arg, int overflow)
 {
 	if (overflow <= 0) return; //if there isn't any overflow, return
@@ -206,19 +213,19 @@ void CodeAnalyzer::analyzeOverflow(Function* func, std::string func_name, Variab
 	vuln.overflow_var = arg->name;
 	vuln.vuln_function = func->name;
 
-	auto base_arg = arg->address.substr(0, 3);
+	auto base_arg = arg->address.substr(0, 3); //base register
 	int64_t pos_arg = std::stoull(arg->address.substr(3, arg->address.length()), nullptr, 16); //Relative position of the arg
-	auto addr = std::get<1>(reg.getConstRegister(base_arg)) + pos_arg;
-	auto size = arg->bytes;
-	auto it = mem_stack.var.upper_bound(addr);
-	auto rbp = std::get<1>(reg.getConstRegister("rbp"));
+	auto addr = std::get<1>(reg.getConstRegister(base_arg)) + pos_arg; //reference - address
+	auto size = arg->bytes; //reference - size (number of bytes occupied by the variable)
+	auto it = mem_stack.var.upper_bound(addr); //iterator of the memory stack (variable) that begins in the position that have the key greater than <addr>
+	auto rbp = std::get<1>(reg.getConstRegister("rbp")); //address store in the register rbp
 
 	while (it != mem_stack.var.end() && it->first < rbp)
 	{
 		vuln.overflown_addr = std::make_tuple(false, "");
 		vuln.overflown_var = std::make_tuple(false, "");
 
-		int mem_space = it->first - addr - size;
+		int mem_space = it->first - addr - size; //Calculate the empty space between the variable of reference and the variable indicated by it
 
 		if (mem_space > 0)
 		{
@@ -230,7 +237,7 @@ void CodeAnalyzer::analyzeOverflow(Function* func, std::string func_name, Variab
 				if (pos < 0) ss << "rbp-" << std::hex << std::showbase << std::abs(pos);
 				else ss <<"rbp+" << std::hex << std::showbase << pos;
 				return ss.str();
-			}(addr - std::get<1>(reg.getConstRegister("rbp")) + size));
+			}(addr - std::get<1>(reg.getConstRegister("rbp")) + size)); //convert the address to be relative to the base pointer
 
 			vulnerabilities.emplace_back(vuln);
 		}
@@ -241,14 +248,14 @@ void CodeAnalyzer::analyzeOverflow(Function* func, std::string func_name, Variab
 			vuln.type = "VAROVERFLOW";
 			vuln.overflown_var = std::make_tuple(true, it->second.name);
 			vulnerabilities.emplace_back(vuln);
-			overflow -= (it->second.bytes + mem_space); //Subract from the overflow the number of bytes used by the variable
-														//(including the empty space)
+			overflow -= (it->second.bytes + mem_space); //Subract from the overflow the number of bytes used by the variable (including the empty space)
 
 		} else
 		{
 			return;
 		}
 
+		//Update the reference address, size and the iterator
 		addr = it->first;
 		size = it->second.bytes;
 		it = mem_stack.var.upper_bound(it->first);
@@ -275,14 +282,18 @@ void CodeAnalyzer::analyzeOverflow(Function* func, std::string func_name, Variab
 
 	if (overflow > 0)
 	{
+		//Stack corruption
 		vuln.type = "SCORRUPTION";
 		vuln.overflown_addr = std::make_tuple(true, "rbp+0x10");
 		vulnerabilities.emplace_back(vuln);
 	}
 }
 
-//Verify if the dangerous functions is actually vulnerable
-void CodeAnalyzer::analyzeVulnFunction(Function *func, std::string func_name)
+/**
+ 	analyzeCalledFunction Function:
+	Verify if the called function is dangerous. If is the case, determine it's arguments and analyze if there an overflow
+ */
+void CodeAnalyzer::analyzeCalledFunction(Function *func, std::string func_name)
 {
 
 	if (func_name.find("fgets") != std::string::npos) //fgets(buf1, num)
@@ -465,7 +476,10 @@ void CodeAnalyzer::analyzeVulnFunction(Function *func, std::string func_name)
 	}
 }
 
-//Analyze the function defined by <func>
+/**
+ 	analyzeFunction Function:
+	Analyze the function defined by <func>, instruction by instruction
+ */
 void CodeAnalyzer::analyzeFunction(Function *func, std::stack<Function*> &stack_func)
 {
 	Instruction current_inst;
@@ -486,10 +500,10 @@ void CodeAnalyzer::analyzeFunction(Function *func, std::stack<Function*> &stack_
 
 				if (pos != std::string::npos) //The destination is a pointer
 				{
-					dest = dest.substr(pos + 1, dest.length() - 2);
+					dest = dest.substr(pos + 1, dest.length() - 2); //remove the []
 					std::string reg_name = dest.substr(0, 3);
 					int64_t relative_pos = std::stoull(dest.substr(3, dest.length()), nullptr, 16);
-					auto mem_pos = std::get<1>(reg.getConstRegister(reg_name)) + relative_pos;
+					auto mem_pos = std::get<1>(reg.getConstRegister(reg_name)) + relative_pos; //memory address
 
 					if (value[0] == '0' && value[1] == 'x') //mov [pointer], number
 					{
@@ -506,7 +520,7 @@ void CodeAnalyzer::analyzeFunction(Function *func, std::stack<Function*> &stack_
 					{
 						auto is_x86 = false;
 
-						if (value[0] == 'e')
+						if (value[0] == 'e') //verify if the reg is 32 bits or 64bits
 						{
 							value = "r" + value.substr(1, value.length());
 							is_x86 = true;
@@ -517,7 +531,7 @@ void CodeAnalyzer::analyzeFunction(Function *func, std::stack<Function*> &stack_
 						//Verify if the value stored in the register is const
 						if (std::get<0>(reg_value_const))
 						{
-							if (mem_stack.const_value.find(mem_pos) != mem_stack.const_value.end())
+							if (mem_stack.const_value.find(mem_pos) != mem_stack.const_value.end()) //There is already a value in that address in the memory
 							{
 								if (is_x86)
 								{
@@ -527,7 +541,7 @@ void CodeAnalyzer::analyzeFunction(Function *func, std::stack<Function*> &stack_
 									mem_stack.const_value[mem_pos] = std::get<1>(reg_value_const);
 								}
 
-							} else
+							} else //Put a new value in the memory
 							{
 								if (is_x86)
 								{
@@ -651,7 +665,7 @@ void CodeAnalyzer::analyzeFunction(Function *func, std::stack<Function*> &stack_
 					reg.addRegister(&(mem_stack.var[mem_pos]), dest);
 				}
 
-			} else if (current_inst.op == "add")
+			} else if (current_inst.op == "add") //add rbp or add rsp
 			{
 				std::string dest = current_inst.args["dest"];
 				std::string value = current_inst.args["value"];
@@ -663,7 +677,7 @@ void CodeAnalyzer::analyzeFunction(Function *func, std::stack<Function*> &stack_
 									+ static_cast<int64_t>(std::stoull(value, nullptr, 16)), dest);
 				}
 
-			} else if (current_inst.op == "sub")
+			} else if (current_inst.op == "sub") //sub rbp or sub rsp
 			{
 				std::string dest = current_inst.args["dest"];
 				std::string value = current_inst.args["value"];
@@ -690,18 +704,7 @@ void CodeAnalyzer::analyzeFunction(Function *func, std::stack<Function*> &stack_
 				} else
 				{
 					func_name = func_name.substr(0, func_name.find("@"));
-
-					//Verify is the function called is dangerous
-					auto is_vuln = [](const std::string vuln[N_DANGEROUS_FUNC], std::string name)
-					{
-						for(auto &p : vuln_functions) if(name.find(p)) return true;
-						return false;
-					}(vuln_functions, func_name);
-
-					if (is_vuln)
-					{
-						analyzeVulnFunction(func, func_name);
-					}
+					analyzeCalledFunction(func, func_name);
 				}
 			} else if (current_inst.op == "nop")
 			{
@@ -822,7 +825,10 @@ void CodeAnalyzer::analyzeFunction(Function *func, std::stack<Function*> &stack_
 	}
 }
 
-//Analyze all the code
+/**
+ 	analyze Function:
+	Analyze the code, beginning with the main function. Using a stack to manage the function calls and returns
+ */
 void CodeAnalyzer::analyze()
 {
 	Function *current_func;
