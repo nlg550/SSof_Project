@@ -1,7 +1,7 @@
 #include "CodeAnalyzer.hpp"
 
-const std::string CodeAnalyzer::vuln_functions[N_DANGEROUS_FUNC] = { "gets", "strcpy", "strcat", "sprintf", "scanf",
-		"fscanf", "fgets", "strncpy", "strncat", "snprintf", "read" };
+const std::string CodeAnalyzer::vuln_functions[N_DANGEROUS_FUNC] = {"strcpy", "strcat", "sprintf",
+		"fscanf", "fgets", "strncpy", "strncat", "snprintf", "read", "gets" , "scanf"};
 
 /**
  Constructor of CodeAnalyzer Class
@@ -211,8 +211,9 @@ void CodeAnalyzer::analyzeOverflow(Function* func, std::string func_name, Variab
 	auto addr = std::get<1>(reg.getConstRegister(base_arg)) + pos_arg;
 	auto size = arg->bytes;
 	auto it = mem_stack.var.upper_bound(addr);
+	auto rbp = std::get<1>(reg.getConstRegister("rbp"));
 
-	while (it != mem_stack.var.end())
+	while (it != mem_stack.var.end() && it->first < rbp)
 	{
 		vuln.overflown_addr = std::make_tuple(false, "");
 		vuln.overflown_var = std::make_tuple(false, "");
@@ -240,8 +241,8 @@ void CodeAnalyzer::analyzeOverflow(Function* func, std::string func_name, Variab
 			vuln.type = "VAROVERFLOW";
 			vuln.overflown_var = std::make_tuple(true, it->second.name);
 			vulnerabilities.emplace_back(vuln);
-			overflow -= (it->second.bytes + mem_space); 	//Subract from the overflow the number of bytes used by the variable
-															//(including the empty space)
+			overflow -= (it->second.bytes + mem_space); //Subract from the overflow the number of bytes used by the variable
+														//(including the empty space)
 
 		} else
 		{
@@ -250,7 +251,7 @@ void CodeAnalyzer::analyzeOverflow(Function* func, std::string func_name, Variab
 
 		addr = it->first;
 		size = it->second.bytes;
-		it++;
+		it = mem_stack.var.upper_bound(it->first);
 	}
 
 	vuln.overflown_var = std::make_tuple(false, "");
@@ -272,7 +273,7 @@ void CodeAnalyzer::analyzeOverflow(Function* func, std::string func_name, Variab
 		overflow -= 8;
 	}
 
-	if (overflow >= 0)
+	if (overflow > 0)
 	{
 		vuln.type = "SCORRUPTION";
 		vuln.overflown_addr = std::make_tuple(true, "rbp+0x10");
@@ -283,31 +284,34 @@ void CodeAnalyzer::analyzeOverflow(Function* func, std::string func_name, Variab
 //Verify if the dangerous functions is actually vulnerable
 void CodeAnalyzer::analyzeVulnFunction(Function *func, std::string func_name)
 {
-	if (func_name == "gets")
-	{
-		auto arg = std::get<1>(reg.getVarRegister("rdi"));
 
-		analyzeOverflow(func, func_name, arg, 100000);
-
-	} else if (func_name == "fgets")
+	if (func_name.find("fgets") != std::string::npos) //fgets(buf1, num)
 	{
-		auto arg1 = std::get<1>(reg.getVarRegister("rdi"));
-		auto arg2 = std::get<1>(reg.getConstRegister("rsi"));
+		auto arg1 = std::get<1>(reg.getVarRegister("rdi"));  //buf1
+		auto arg2 = std::get<1>(reg.getConstRegister("rsi")); //num
 
 		arg1->merge_var = nullptr; //Because of the /0 termination, the variables are not longer concatenated
 
 		arg1->effective_size = arg2;
 		analyzeOverflow(func, func_name, arg1, arg1->effective_size - arg1->bytes);
 
-	} else if (func_name == "strcpy")
+	}else 	if (func_name.find("gets") != std::string::npos) //gets(buf1)
 	{
-		auto arg1 = std::get<1>(reg.getVarRegister("rdi"));
-		auto arg2 = std::get<1>(reg.getVarRegister("rsi"));
+		auto arg = std::get<1>(reg.getVarRegister("rdi")); //buf1
+
+		analyzeOverflow(func, func_name, arg, 100000);
+
+	}
+
+	else if (func_name.find("strcpy") != std::string::npos) //strcpy(buf1, buf2)
+	{
+		auto arg1 = std::get<1>(reg.getVarRegister("rdi")); //buf1
+		auto arg2 = std::get<1>(reg.getVarRegister("rsi")); //buf2
 
 		arg1->merge_var = nullptr;
 
 		//If <arg2> are merge with another variable, update the effective size of the <arg2>
-		if(arg2->merge_var != nullptr && arg2->effective_size != arg2->bytes + arg2->merge_var->effective_size)
+		if (arg2->merge_var != nullptr && arg2->effective_size != arg2->bytes + arg2->merge_var->effective_size)
 		{
 			arg2->effective_size = arg2->bytes + arg2->merge_var->effective_size;
 		}
@@ -315,14 +319,14 @@ void CodeAnalyzer::analyzeVulnFunction(Function *func, std::string func_name)
 		arg1->effective_size = arg2->effective_size;
 		analyzeOverflow(func, func_name, arg1, arg1->effective_size - arg1->bytes);
 
-	} else if (func_name == "strcat")
+	} else if (func_name.find("strcat") != std::string::npos) //strcat(buf1, buf2)
 	{
-		auto arg1 = std::get<1>(reg.getVarRegister("rdi"));
-		auto arg2 = std::get<1>(reg.getVarRegister("rsi"));
+		auto arg1 = std::get<1>(reg.getVarRegister("rdi")); //buf1
+		auto arg2 = std::get<1>(reg.getVarRegister("rsi")); //buf2
 
 		arg1->merge_var = nullptr;
 
-		if(arg2->merge_var != nullptr && arg2->effective_size != arg2->bytes + arg2->merge_var->effective_size)
+		if (arg2->merge_var != nullptr && arg2->effective_size != arg2->bytes + arg2->merge_var->effective_size)
 		{
 			arg2->effective_size = arg2->bytes + arg2->merge_var->effective_size;
 		}
@@ -330,26 +334,26 @@ void CodeAnalyzer::analyzeVulnFunction(Function *func, std::string func_name)
 		arg1->effective_size += arg2->effective_size;
 		analyzeOverflow(func, func_name, arg1, arg1->effective_size - arg1->bytes);
 
-	} else if (func_name == "strncpy")
+	} else if (func_name.find("strncpy") != std::string::npos) //strncpy(buf1, buf2, num)
 	{
-		auto arg1 = std::get<1>(reg.getVarRegister("rdi"));
-		auto arg2 = std::get<1>(reg.getVarRegister("rsi"));
-		auto arg3 = std::get<1>(reg.getConstRegister("rdx"));
+		auto arg1 = std::get<1>(reg.getVarRegister("rdi")); //buf1
+		auto arg2 = std::get<1>(reg.getVarRegister("rsi")); //buf2
+		auto arg3 = std::get<1>(reg.getConstRegister("rdx")); //num
 
-		if(arg2->merge_var != nullptr && arg2->effective_size != arg2->bytes + arg2->merge_var->effective_size)
+		if (arg2->merge_var != nullptr && arg2->effective_size != arg2->bytes + arg2->merge_var->effective_size)
 		{
 			arg2->effective_size = arg2->bytes + arg2->merge_var->effective_size;
 		}
 
-		if (arg2->effective_size > arg3)
+		if (arg2->effective_size > arg3) //If the buf2 is bigger than num, the /0 is not included!
 		{
 			auto base = arg1->address.substr(0, 3);
 			int64_t relative_pos = std::stoull(arg1->address.substr(3, arg1->address.length()), nullptr, 16);
 			auto addr = std::get<1>(reg.getConstRegister(base)) + relative_pos;
 			auto it = mem_stack.var.upper_bound(addr);
 
-			if (it->first == addr + arg3)
-			{
+			if (it->first == addr + arg3) //If there is another variable in the adjacent position, the buf1 is concatenated
+			{							  //with the adjacent variable
 				arg1->effective_size = arg3 + it->second.effective_size;
 				arg1->merge_var = &it->second;
 
@@ -365,34 +369,96 @@ void CodeAnalyzer::analyzeVulnFunction(Function *func, std::string func_name)
 
 		analyzeOverflow(func, func_name, arg1, arg1->effective_size - arg1->bytes);
 
-	} else if (func_name == "strncat")
+	} else if (func_name.find("strncat") != std::string::npos) //strncat(buf1, buf2, num)
 	{
-		auto arg1 = std::get<1>(reg.getVarRegister("rdi"));
-		auto arg2 = std::get<1>(reg.getVarRegister("rsi"));
-		auto arg3 = std::get<1>(reg.getConstRegister("rdx"));
+		auto arg1 = std::get<1>(reg.getVarRegister("rdi")); //buf1
+		auto arg2 = std::get<1>(reg.getVarRegister("rsi")); //buf2
+		auto arg3 = std::get<1>(reg.getConstRegister("rdx")); //num
 
 		arg1->merge_var = nullptr;
 
-		if(arg2->merge_var != nullptr && arg2->effective_size != arg2->bytes + arg2->merge_var->effective_size)
+		if (arg2->merge_var != nullptr && arg2->effective_size != arg2->bytes + arg2->merge_var->effective_size)
 		{
 			arg2->effective_size = arg2->bytes + arg2->merge_var->effective_size;
 		}
 
-		if(arg3 > arg2->effective_size)
+		if (arg3 > arg2->effective_size)
 		{
 			arg1->effective_size += arg2->effective_size;
 
-		}else
+		} else
 		{
 			arg1->effective_size += arg3;
 		}
 
 		analyzeOverflow(func, func_name, arg1, arg1->effective_size - arg1->bytes);
 
-	} else if (func_name == "read")
+	} else if (func_name.find("read") != std::string::npos) //read(FILE, buf1, num)
 	{
 		auto arg1 = std::get<1>(reg.getVarRegister("rsi"));
 		auto arg2 = std::get<1>(reg.getConstRegister("rdx"));
+
+		arg1->merge_var = nullptr;
+
+		arg1->effective_size = arg2;
+		analyzeOverflow(func, func_name, arg1, arg1->effective_size - arg1->bytes);
+
+	}  else if (func_name.find("fscanf") != std::string::npos) //fscanf(FILE, format, ...) -- Our simplified model consider only %s
+	{								 //(only 1 buffer) or %s%s (2 buffers) as the format
+		auto arg3_exist = std::get<0>(reg.getVarRegister("rdx")); //buf1 exist?
+		auto arg4_exist = std::get<0>(reg.getVarRegister("rcx")); //buf2 exist?
+
+		if (arg3_exist)
+		{
+			analyzeOverflow(func, func_name, std::get<1>(reg.getVarRegister("rdx")), 100000);
+		}
+
+		if (arg4_exist)
+		{
+			analyzeOverflow(func, func_name, std::get<1>(reg.getVarRegister("rcx")), 100000);
+		}
+
+	} else if (func_name.find("scanf") != std::string::npos) //scanf(format, ...) -- Our simplified model consider only %s
+	{								 //(only 1 buffer) or %s%s (2 buffers) as the format
+		auto arg2_exist = std::get<0>(reg.getVarRegister("rsi")); //buf1 exist?
+		auto arg3_exist = std::get<0>(reg.getVarRegister("rdx")); //buf2 exist?
+
+		if (arg2_exist)
+		{
+			analyzeOverflow(func, func_name, std::get<1>(reg.getVarRegister("rsi")), 100000);
+		}
+
+		if (arg3_exist)
+		{
+			analyzeOverflow(func, func_name, std::get<1>(reg.getVarRegister("rdx")), 100000);
+		}
+
+	}else if (func_name.find("sprintf") != std::string::npos) 	//sprintf(dest_buffer, format, ...) -- Our simplified model consider only %s
+	{								 	//(only 1 buffer) or %s%s (2 buffers) as the format
+		auto arg1 = std::get<1>(reg.getVarRegister("rdi")); //destination
+		auto arg3_exist = std::get<0>(reg.getVarRegister("rdx")); //buff1 exist?
+		auto arg4_exist = std::get<0>(reg.getVarRegister("rcx")); //buff2 exist?
+
+		if(arg3_exist && arg4_exist)
+		{
+			auto arg3 = std::get<1>(reg.getVarRegister("rdx"));
+			auto arg4 = std::get<1>(reg.getVarRegister("rcx"));
+
+			arg1->effective_size = arg3->effective_size + arg4->effective_size;
+			analyzeOverflow(func, func_name, arg1, arg1->effective_size - arg1->bytes);
+
+		}else if(arg3_exist)
+		{
+			auto arg3 = std::get<1>(reg.getVarRegister("rdx"));
+
+			arg1->effective_size = arg3->effective_size;
+			analyzeOverflow(func, func_name, arg1, arg1->effective_size - arg1->bytes);
+		}
+
+	}else if (func_name.find("snprintf") != std::string::npos) //snprintf(dest_buffer, num, format, ...)
+	{
+		auto arg1 = std::get<1>(reg.getVarRegister("rdi")); //destination
+		auto arg2 = std::get<1>(reg.getConstRegister("rsi")); //num
 
 		arg1->effective_size = arg2;
 		analyzeOverflow(func, func_name, arg1, arg1->effective_size - arg1->bytes);
@@ -592,7 +658,9 @@ void CodeAnalyzer::analyzeFunction(Function *func, std::stack<Function*> &stack_
 
 				if (dest == "rsp" || dest == "rbp") //Arithmetic opertaions only valid on rsp and rbp
 				{
-					reg.addRegister(std::get<1>(reg.getConstRegister(dest)) + static_cast<int64_t> (std::stoull(value, nullptr, 16)), dest);
+					reg.addRegister(
+							std::get<1>(reg.getConstRegister(dest))
+									+ static_cast<int64_t>(std::stoull(value, nullptr, 16)), dest);
 				}
 
 			} else if (current_inst.op == "sub")
@@ -602,7 +670,9 @@ void CodeAnalyzer::analyzeFunction(Function *func, std::stack<Function*> &stack_
 
 				if (dest == "rsp" || dest == "rbp")
 				{
-					reg.addRegister(std::get<1>(reg.getConstRegister(dest)) - static_cast<int64_t> (std::stoull(value, nullptr, 16)), dest);
+					reg.addRegister(
+							std::get<1>(reg.getConstRegister(dest))
+									- static_cast<int64_t>(std::stoull(value, nullptr, 16)), dest);
 				}
 			} else if (current_inst.op == "call") //call <fnname>
 			{
@@ -624,7 +694,7 @@ void CodeAnalyzer::analyzeFunction(Function *func, std::stack<Function*> &stack_
 					//Verify is the function called is dangerous
 					auto is_vuln = [](const std::string vuln[N_DANGEROUS_FUNC], std::string name)
 					{
-						for(auto &p : vuln_functions) if(name == p) return true;
+						for(auto &p : vuln_functions) if(name.find(p)) return true;
 						return false;
 					}(vuln_functions, func_name);
 
@@ -644,11 +714,10 @@ void CodeAnalyzer::analyzeFunction(Function *func, std::stack<Function*> &stack_
 				std::string value = current_inst.args["value"];
 				auto pos = value.find("[");
 
-				if(value == "rbp")
+				if (value == "rbp")
 				{
 					//Do nothing (the reg rbp is already in the stack)
-				}
-				else if (pos != std::string::npos) //push [pointer]
+				} else if (pos != std::string::npos) //push [pointer]
 				{
 					value = value.substr(pos + 1, value.length() - 2);
 					std::string reg_name = value.substr(0, 3);
