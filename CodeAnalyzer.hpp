@@ -17,8 +17,6 @@
 #include "Registers.hpp"
 #include "StructDefinition.hpp"
 
-#define N_DANGEROUS_FUNC 11
-
 using json = nlohmann::json;
 
 class CodeAnalyzer {
@@ -26,7 +24,7 @@ private:
 	MemoryStack mem_stack;
 	Registers reg;
 
-	std::map<std::string, Function> functions;
+	std::map<std::string, Function> functions; //the functions are store in a map (key = function name)
 	std::vector<Vulnerability> vulnerabilities;
 
 	void allocFunction(Function &func, uint64_t return_addr);

@@ -59,7 +59,7 @@ struct Vulnerability {
 
 /**
  	 Memory Stack struct:
- 	 	 Definition how the values are stored on the memory
+ 	 	 Definition of how the values are stored on the memory
  */
 struct MemoryStack{
 	std::map<uint64_t, Variable> var;

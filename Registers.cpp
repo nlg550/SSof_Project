@@ -6,8 +6,8 @@ Registers::Registers()
 	reg_const.clear();
 
 	reg_const.emplace("rip", 0);
-	reg_const.emplace("rsp", 0xFFFFFFFF);
-	reg_const.emplace("rbp", 0xFFFFFFFF);
+	reg_const.emplace("rsp", 0xFFFFFFFFFFFFFFFF);
+	reg_const.emplace("rbp", 0xFFFFFFFFFFFFFFFF);
 }
 
 Registers::~Registers()
@@ -40,6 +40,7 @@ std::tuple<bool, uint64_t> Registers::getConstRegister(std::string name)
 	}
 }
 
+//Add a variable to the register determined by <name>
 void Registers::addRegister(Variable *var, std::string name)
 {
 	if(reg_var.find(name) != reg_var.end())
@@ -56,6 +57,7 @@ void Registers::addRegister(Variable *var, std::string name)
 	}
 }
 
+//Add a const to the register determined by <name>
 void Registers::addRegister(uint64_t const_value, std::string name)
 {
 	if(reg_var.find(name) != reg_var.end())
