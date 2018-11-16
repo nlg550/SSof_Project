@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <stdint.h>
 
 /**
 	Variable struct:
@@ -14,6 +15,8 @@ struct Variable {
 	unsigned int bytes;
 	unsigned int effective_size; //The effective size of the variable
 	std::string address;
+
+	Variable *merge_var; //If one variable merge with another, this pointer point to the other variable
 };
 
 /**
@@ -22,7 +25,7 @@ struct Variable {
 */
 struct Instruction {
 	std::string op;
-	unsigned int pos;
+	uint64_t pos;
 	std::map<std::string, std::string> args;
 	std::string address;
 };
@@ -59,8 +62,8 @@ struct Vulnerability {
  	 	 Definition how the values are stored on the memory
  */
 struct MemoryStack{
-	std::map<unsigned int, Variable> var;
-	std::map<unsigned int, unsigned int> const_value;
+	std::map<uint64_t, Variable> var;
+	std::map<uint64_t, int64_t> const_value;
 };
 
 #endif /* STRUCTDEFINITION_H_ */

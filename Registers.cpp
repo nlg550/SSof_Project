@@ -29,7 +29,7 @@ std::tuple<bool, Variable*> Registers::getVarRegister(std::string name)
 }
 
 //Search if the register <name> exist, returning true and the value if the register was found
-std::tuple<bool, unsigned int> Registers::getConstRegister(std::string name)
+std::tuple<bool, uint64_t> Registers::getConstRegister(std::string name)
 {
 	if(reg_const.find(name) != reg_const.end())
 	{
@@ -56,7 +56,7 @@ void Registers::addRegister(Variable *var, std::string name)
 	}
 }
 
-void Registers::addRegister(unsigned int const_value, std::string name)
+void Registers::addRegister(uint64_t const_value, std::string name)
 {
 	if(reg_var.find(name) != reg_var.end())
 	{

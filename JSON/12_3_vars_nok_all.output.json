@@ -1,0 +1,24 @@
+[
+    {
+        "address": "400627",
+        "fnname": "strcpy",
+        "overflow_var": "buf4",
+        "vuln_function": "main",
+        "vulnerability": "RBPOVERFLOW"
+    },
+    {
+        "address": "400627",
+        "fnname": "strcpy",
+        "overflow_var": "buf4",
+        "vuln_function": "main",
+        "vulnerability": "RETOVERFLOW"
+    },
+    {
+        "address": "400627",
+        "fnname": "strcpy",
+        "overflow_var": "buf4",
+        "overflown_addr": "rbp+0x10",
+        "vuln_function": "main",
+        "vulnerability": "SCORRUPTION"
+    }
+]

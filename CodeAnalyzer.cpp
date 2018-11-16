@@ -72,7 +72,8 @@ void CodeAnalyzer::jsonToStruct(json input)
 					var_intern.at("type").get_to(v_.type);
 					var_intern.at("bytes").get_to(v_.bytes);
 					var_intern.at("address").get_to(v_.address);
-					v_.effective_size = v_.bytes;
+					v_.effective_size = 0;
+					v_.merge_var = nullptr;
 					variables_.push_back(v_);
 				}
 				function_.variables = variables_;
@@ -163,18 +164,20 @@ void CodeAnalyzer::structToJson(json& output, const Vulnerability& vuln)
 }
 
 // Allocate the memory stack and the register for the function <func>
-void CodeAnalyzer::allocFunction(Function& func, unsigned int return_addr)
+void CodeAnalyzer::allocFunction(Function& func, uint64_t return_addr)
 {
-	unsigned int sp = std::get<1>(reg.getConstRegister("rsp"));
+	uint64_t sp = std::get<1>(reg.getConstRegister("rsp"));
 
 	mem_stack.const_value.emplace(sp - 8, return_addr); //Insert the return address on the stack
-	reg.addRegister(sp - 8, "rsp"); //Update register rsp
-	reg.addRegister(std::stoul(func.instructions[0].address, nullptr, 16), "rsi"); //Change the register rsi to the address of the new function
+	mem_stack.const_value.emplace(sp - 16, std::get<1>(reg.getConstRegister("rbp"))); //Insert the base pointer address in the stack
+	reg.addRegister(sp - 8, "rsp"); //Update the stack pointer
+	reg.addRegister(sp - 16, "rbp"); //Update the base pointer
+	reg.addRegister(std::stoull(func.instructions[0].address, nullptr, 16), "rsi"); //Change the register rsi to the address of the new function
 
 	for (auto &p : func.variables)
 	{
-		std::string reg_name = p.address.substr(0, 2);
-		int relative_pos = std::stoi(p.address.substr(3, p.address.length()), nullptr, 16);
+		std::string reg_name = p.address.substr(0, 3);
+		int64_t relative_pos = std::stoull(p.address.substr(3, p.address.length()), nullptr, 16);
 		mem_stack.var.emplace(std::get<1>(reg.getConstRegister(reg_name)) + relative_pos, p);
 	}
 }
@@ -203,68 +206,51 @@ void CodeAnalyzer::analyzeOverflow(Function* func, std::string func_name, Variab
 	vuln.overflow_var = arg->name;
 	vuln.vuln_function = func->name;
 
-	//Sort the variables according with their relative address
-	std::sort(func->variables.begin(), func->variables.end(), [](Variable &lhs, Variable &rhs)
+	auto base_arg = arg->address.substr(0, 3);
+	int64_t pos_arg = std::stoull(arg->address.substr(3, arg->address.length()), nullptr, 16); //Relative position of the arg
+	auto addr = std::get<1>(reg.getConstRegister(base_arg)) + pos_arg;
+	auto size = arg->bytes;
+	auto it = mem_stack.var.upper_bound(addr);
+
+	while (it != mem_stack.var.end())
 	{
-		if(lhs.address.substr(0, 2) == rhs.address.substr(0, 2))
-		{
-			int a = std::stoi(lhs.address.substr(3, lhs.address.length()), nullptr, 16);
-			int b = std::stoi(rhs.address.substr(3, rhs.address.length()), nullptr, 16);
-			return a < b;
-		} else
-		{
-			return lhs.address.substr(0, 2) > rhs.address.substr(0, 2);
-		}
-	});
-
-	int pos = std::stoi(arg->address.substr(3, arg->address.length()), nullptr, 16); //Reference - Relative Position
-	unsigned int size = arg->bytes; //Reference size
-
-	//Find all possible local variables that can be overflown
-	for (auto &p : func->variables)
-	{
-		int var_pos = std::stoi(p.address.substr(3, p.address.length()), nullptr, 16); //Relative position of the variable
-
 		vuln.overflown_addr = std::make_tuple(false, "");
 		vuln.overflown_var = std::make_tuple(false, "");
 
-		if (pos < var_pos) //The position of the variable is greater than the reference position?
+		int mem_space = it->first - addr - size;
+
+		if (mem_space > 0)
 		{
-			int mem_space = var_pos - pos - size; //Calculate the space between the variable and the reference
-
-			if (mem_space > 0)
+			//Invalid Access
+			vuln.type = "INVALIDACC";
+			vuln.overflown_addr = std::make_tuple(true, [](int pos)
 			{
-				//Invalid Access
-				vuln.type = "INVALIDACC";
-				vuln.overflown_addr = std::make_tuple(true, [](int pos)
-				{
-					std::stringstream ss;
-					if (pos < 0) ss << "rbp" << "-" << std::hex << std::showbase << std::abs(pos);
-					else ss << "rbp" << std::hex << std::showbase << pos;
-					return ss.str();
-				}(pos + size));
+				std::stringstream ss;
+				if (pos < 0) ss << "rbp-" << std::hex << std::showbase << std::abs(pos);
+				else ss <<"rbp+" << std::hex << std::showbase << pos;
+				return ss.str();
+			}(addr - std::get<1>(reg.getConstRegister("rbp")) + size));
 
-				vulnerabilities.emplace_back(vuln);
-			}
-
-			if (overflow > mem_space)
-			{
-				//Overflow of local variable
-				vuln.type = "VAROVERFLOW";
-				vuln.overflown_var = std::make_tuple(true, p.name);
-				vulnerabilities.emplace_back(vuln);
-				overflow -= (p.bytes + mem_space); 	//Subract from the overflow the number of bytes used by the variable
-													//(including the empty space)
-
-			} else
-			{
-				return;
-			}
-
-			//Update the reference position and base register
-			pos = var_pos;
-			size = p.bytes;
+			vulnerabilities.emplace_back(vuln);
 		}
+
+		if (overflow > mem_space)
+		{
+			//Overflow of local variable
+			vuln.type = "VAROVERFLOW";
+			vuln.overflown_var = std::make_tuple(true, it->second.name);
+			vulnerabilities.emplace_back(vuln);
+			overflow -= (it->second.bytes + mem_space); 	//Subract from the overflow the number of bytes used by the variable
+															//(including the empty space)
+
+		} else
+		{
+			return;
+		}
+
+		addr = it->first;
+		size = it->second.bytes;
+		it++;
 	}
 
 	vuln.overflown_var = std::make_tuple(false, "");
@@ -286,7 +272,7 @@ void CodeAnalyzer::analyzeOverflow(Function* func, std::string func_name, Variab
 		overflow -= 8;
 	}
 
-	if (overflow > 0)
+	if (overflow >= 0)
 	{
 		vuln.type = "SCORRUPTION";
 		vuln.overflown_addr = std::make_tuple(true, "rbp+0x10");
@@ -308,44 +294,76 @@ void CodeAnalyzer::analyzeVulnFunction(Function *func, std::string func_name)
 		auto arg1 = std::get<1>(reg.getVarRegister("rdi"));
 		auto arg2 = std::get<1>(reg.getConstRegister("rsi"));
 
-		int overflow = arg2 - arg1->effective_size;
-
-		analyzeOverflow(func, func_name, arg1, overflow);
+		arg1->merge_var = nullptr; //Because of the /0 termination, the variables are not longer concatenated
 
 		arg1->effective_size = arg2;
+		analyzeOverflow(func, func_name, arg1, arg1->effective_size - arg1->bytes);
 
 	} else if (func_name == "strcpy")
 	{
 		auto arg1 = std::get<1>(reg.getVarRegister("rdi"));
 		auto arg2 = std::get<1>(reg.getVarRegister("rsi"));
 
-		int overflow = arg2->effective_size - arg1->effective_size;
+		arg1->merge_var = nullptr;
 
-		analyzeOverflow(func, func_name, arg1, overflow);
+		//If <arg2> are merge with another variable, update the effective size of the <arg2>
+		if(arg2->merge_var != nullptr && arg2->effective_size != arg2->bytes + arg2->merge_var->effective_size)
+		{
+			arg2->effective_size = arg2->bytes + arg2->merge_var->effective_size;
+		}
 
 		arg1->effective_size = arg2->effective_size;
+		analyzeOverflow(func, func_name, arg1, arg1->effective_size - arg1->bytes);
 
 	} else if (func_name == "strcat")
 	{
 		auto arg1 = std::get<1>(reg.getVarRegister("rdi"));
 		auto arg2 = std::get<1>(reg.getVarRegister("rsi"));
 
-		int overflow = arg2->effective_size - arg1->effective_size;
+		arg1->merge_var = nullptr;
 
-		analyzeOverflow(func, func_name, arg1, overflow);
+		if(arg2->merge_var != nullptr && arg2->effective_size != arg2->bytes + arg2->merge_var->effective_size)
+		{
+			arg2->effective_size = arg2->bytes + arg2->merge_var->effective_size;
+		}
 
 		arg1->effective_size += arg2->effective_size;
+		analyzeOverflow(func, func_name, arg1, arg1->effective_size - arg1->bytes);
 
 	} else if (func_name == "strncpy")
 	{
 		auto arg1 = std::get<1>(reg.getVarRegister("rdi"));
+		auto arg2 = std::get<1>(reg.getVarRegister("rsi"));
 		auto arg3 = std::get<1>(reg.getConstRegister("rdx"));
 
-		int overflow = arg3 - arg1->effective_size;
+		if(arg2->merge_var != nullptr && arg2->effective_size != arg2->bytes + arg2->merge_var->effective_size)
+		{
+			arg2->effective_size = arg2->bytes + arg2->merge_var->effective_size;
+		}
 
-		analyzeOverflow(func, func_name, arg1, overflow);
+		if (arg2->effective_size > arg3)
+		{
+			auto base = arg1->address.substr(0, 3);
+			int64_t relative_pos = std::stoull(arg1->address.substr(3, arg1->address.length()), nullptr, 16);
+			auto addr = std::get<1>(reg.getConstRegister(base)) + relative_pos;
+			auto it = mem_stack.var.upper_bound(addr);
 
-		arg1->effective_size = arg3 + 1;
+			if (it->first == addr + arg3)
+			{
+				arg1->effective_size = arg3 + it->second.effective_size;
+				arg1->merge_var = &it->second;
+
+			} else
+			{
+				arg1->effective_size = arg3;
+			}
+
+		} else
+		{
+			arg1->effective_size = arg3;
+		}
+
+		analyzeOverflow(func, func_name, arg1, arg1->effective_size - arg1->bytes);
 
 	} else if (func_name == "strncat")
 	{
@@ -353,33 +371,31 @@ void CodeAnalyzer::analyzeVulnFunction(Function *func, std::string func_name)
 		auto arg2 = std::get<1>(reg.getVarRegister("rsi"));
 		auto arg3 = std::get<1>(reg.getConstRegister("rdx"));
 
-		int overflow = arg3 - arg1->effective_size;
+		arg1->merge_var = nullptr;
 
-		analyzeOverflow(func, func_name, arg1, overflow);
+		if(arg2->merge_var != nullptr && arg2->effective_size != arg2->bytes + arg2->merge_var->effective_size)
+		{
+			arg2->effective_size = arg2->bytes + arg2->merge_var->effective_size;
+		}
 
-		arg1->effective_size += arg2->effective_size;
+		if(arg3 > arg2->effective_size)
+		{
+			arg1->effective_size += arg2->effective_size;
+
+		}else
+		{
+			arg1->effective_size += arg3;
+		}
+
+		analyzeOverflow(func, func_name, arg1, arg1->effective_size - arg1->bytes);
 
 	} else if (func_name == "read")
 	{
 		auto arg1 = std::get<1>(reg.getVarRegister("rsi"));
 		auto arg2 = std::get<1>(reg.getConstRegister("rdx"));
 
-		int overflow = arg2 - arg1->effective_size;
-
-		analyzeOverflow(func, func_name, arg1, overflow);
-
 		arg1->effective_size = arg2;
-
-	}else if (func_name == "read")
-	{
-		auto arg1 = std::get<1>(reg.getVarRegister("rsi"));
-		auto arg2 = std::get<1>(reg.getConstRegister("rdx"));
-
-		int overflow = arg2 - arg1->effective_size;
-
-		analyzeOverflow(func, func_name, arg1, overflow);
-
-		arg1->effective_size = arg2;
+		analyzeOverflow(func, func_name, arg1, arg1->effective_size - arg1->bytes);
 	}
 }
 
@@ -404,21 +420,21 @@ void CodeAnalyzer::analyzeFunction(Function *func, std::stack<Function*> &stack_
 
 				if (pos != std::string::npos) //The destination is a pointer
 				{
-					dest = dest.substr(pos + 1, dest.length() - 1);
-					std::string reg_name = dest.substr(0, 2);
-					int relative_pos = std::stoi(dest.substr(3, dest.length()), nullptr, 16);
-					unsigned int mem_pos = std::get<1>(reg.getConstRegister(reg_name)) + relative_pos;
+					dest = dest.substr(pos + 1, dest.length() - 2);
+					std::string reg_name = dest.substr(0, 3);
+					int64_t relative_pos = std::stoull(dest.substr(3, dest.length()), nullptr, 16);
+					auto mem_pos = std::get<1>(reg.getConstRegister(reg_name)) + relative_pos;
 
 					if (value[0] == '0' && value[1] == 'x') //mov [pointer], number
 					{
 						//Put the number on the memory stack
 						if (mem_stack.const_value.find(mem_pos) != mem_stack.const_value.end())
 						{
-							mem_stack.const_value[mem_pos] = std::stoul(value, nullptr, 16);
+							mem_stack.const_value[mem_pos] = std::stoull(value, nullptr, 16);
 
 						} else
 						{
-							mem_stack.const_value.emplace(mem_pos, std::stoul(value, nullptr, 16));
+							mem_stack.const_value.emplace(mem_pos, std::stoull(value, nullptr, 16));
 						}
 					} else //mov [pointer], reg
 					{
@@ -484,7 +500,7 @@ void CodeAnalyzer::analyzeFunction(Function *func, std::stack<Function*> &stack_
 
 					if (value[0] == '0' && value[1] == 'x') //mov reg, number
 					{
-						reg.addRegister(std::stoul(value, nullptr, 16), dest);
+						reg.addRegister(std::stoull(value, nullptr, 16), dest);
 
 					} else
 					{
@@ -494,10 +510,10 @@ void CodeAnalyzer::analyzeFunction(Function *func, std::stack<Function*> &stack_
 						{
 							if (current_inst.args.find("obs") == current_inst.args.end()) //Ignore stdin
 							{
-								value = value.substr(pos + 1, value.length() - 1);
-								std::string reg_name = value.substr(0, 2);
-								int relative_pos = std::stoi(value.substr(3, value.length()), nullptr, 16);
-								unsigned int mem_pos = std::get<1>(reg.getConstRegister(reg_name)) + relative_pos;
+								value = value.substr(pos + 1, value.length() - 2);
+								std::string reg_name = value.substr(0, 3);
+								int64_t relative_pos = std::stoull(value.substr(3, value.length()), nullptr, 16);
+								auto mem_pos = std::get<1>(reg.getConstRegister(reg_name)) + relative_pos;
 
 								//Find the value pointed by the pointer and puts it on the destination register
 								if (mem_stack.const_value.find(mem_pos) != mem_stack.const_value.end())
@@ -555,10 +571,10 @@ void CodeAnalyzer::analyzeFunction(Function *func, std::stack<Function*> &stack_
 				std::string value = current_inst.args["value"];
 
 				auto pos = value.find("[");
-				value = value.substr(pos + 1, value.length() - 1);
-				std::string reg_name = value.substr(0, 2);
-				int relative_pos = std::stoi(value.substr(3, value.length()), nullptr, 16);
-				unsigned int mem_pos = std::get<1>(reg.getConstRegister(reg_name)) + relative_pos;
+				value = value.substr(pos + 1, value.length() - 2);
+				std::string reg_name = value.substr(0, 3);
+				int64_t relative_pos = std::stoull(value.substr(3, value.length()), nullptr, 16);
+				auto mem_pos = std::get<1>(reg.getConstRegister(reg_name)) + relative_pos;
 
 				if (mem_stack.const_value.find(mem_pos) != mem_stack.const_value.end())
 				{
@@ -576,7 +592,7 @@ void CodeAnalyzer::analyzeFunction(Function *func, std::stack<Function*> &stack_
 
 				if (dest == "rsp" || dest == "rbp") //Arithmetic opertaions only valid on rsp and rbp
 				{
-					reg.addRegister(std::get<1>(reg.getConstRegister(dest)) + std::stoul(value, nullptr, 16), dest);
+					reg.addRegister(std::get<1>(reg.getConstRegister(dest)) + static_cast<int64_t> (std::stoull(value, nullptr, 16)), dest);
 				}
 
 			} else if (current_inst.op == "sub")
@@ -586,7 +602,7 @@ void CodeAnalyzer::analyzeFunction(Function *func, std::stack<Function*> &stack_
 
 				if (dest == "rsp" || dest == "rbp")
 				{
-					reg.addRegister(std::get<1>(reg.getConstRegister(dest)) - std::stoul(value, nullptr, 16), dest);
+					reg.addRegister(std::get<1>(reg.getConstRegister(dest)) - static_cast<int64_t> (std::stoull(value, nullptr, 16)), dest);
 				}
 			} else if (current_inst.op == "call") //call <fnname>
 			{
@@ -598,7 +614,7 @@ void CodeAnalyzer::analyzeFunction(Function *func, std::stack<Function*> &stack_
 					stack_func.emplace(&functions[func_name]); //Add the function to the stack
 					func->current_inst++;
 					allocFunction(functions[func_name],
-							std::stoul(func->instructions[func->current_inst].address, nullptr, 16));
+							std::stoull(func->instructions[func->current_inst].address, nullptr, 16));
 
 					return;
 				} else
@@ -628,12 +644,16 @@ void CodeAnalyzer::analyzeFunction(Function *func, std::stack<Function*> &stack_
 				std::string value = current_inst.args["value"];
 				auto pos = value.find("[");
 
-				if (pos != std::string::npos) //push [pointer]
+				if(value == "rbp")
 				{
-					value = value.substr(pos + 1, value.length() - 1);
-					std::string reg_name = value.substr(0, 2);
-					int relative_pos = std::stoi(value.substr(3, value.length()), nullptr, 16);
-					unsigned int mem_pos = std::get<1>(reg.getConstRegister(reg_name)) + relative_pos;
+					//Do nothing (the reg rbp is already in the stack)
+				}
+				else if (pos != std::string::npos) //push [pointer]
+				{
+					value = value.substr(pos + 1, value.length() - 2);
+					std::string reg_name = value.substr(0, 3);
+					int64_t relative_pos = std::stoull(value.substr(3, value.length()), nullptr, 16);
+					auto mem_pos = std::get<1>(reg.getConstRegister(reg_name)) + relative_pos;
 
 					if (mem_stack.const_value.find(mem_pos) != mem_stack.const_value.end())
 					{
@@ -663,11 +683,11 @@ void CodeAnalyzer::analyzeFunction(Function *func, std::stack<Function*> &stack_
 					{
 						if (mem_stack.const_value.find(sp) != mem_stack.const_value.end())
 						{
-							mem_stack.const_value[sp] = std::stoul(value, nullptr, 16);
+							mem_stack.const_value[sp] = std::stoull(value, nullptr, 16);
 
 						} else
 						{
-							mem_stack.const_value.emplace(sp, std::stoul(value, nullptr, 16));
+							mem_stack.const_value.emplace(sp, std::stoull(value, nullptr, 16));
 						}
 					} else //push reg
 					{
@@ -716,6 +736,8 @@ void CodeAnalyzer::analyzeFunction(Function *func, std::stack<Function*> &stack_
 				}
 			} else if (current_inst.op == "leave")
 			{
+				desallocFunction(*func);
+				stack_func.pop();
 				leave = true;
 			}
 
@@ -725,8 +747,6 @@ void CodeAnalyzer::analyzeFunction(Function *func, std::stack<Function*> &stack_
 		{
 			if (current_inst.op == "ret")
 			{
-				desallocFunction(*func);
-				stack_func.pop();
 				return;
 			}
 		}

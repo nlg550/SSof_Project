@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <iomanip>
 #include <sstream>
+#include <stdint.h>
 
 #include "json.hpp" //JSON Library
 #include "Registers.hpp"
@@ -31,7 +32,7 @@ private:
 	std::map<std::string, Function> functions;
 	std::vector<Vulnerability> vulnerabilities;
 
-	void allocFunction(Function &func, unsigned int return_addr);
+	void allocFunction(Function &func, uint64_t return_addr);
 	void desallocFunction(Function &func);
 	void analyze();
 	void analyzeFunction(Function *func, std::stack<Function*> &stack_func);

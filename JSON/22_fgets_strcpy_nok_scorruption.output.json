@@ -1,0 +1,40 @@
+[
+    {
+        "address": "40059c",
+        "fnname": "strcpy",
+        "overflow_var": "buf2",
+        "overflown_addr": "rbp-0x10",
+        "vuln_function": "main",
+        "vulnerability": "INVALIDACC"
+    },
+    {
+        "address": "40059c",
+        "fnname": "strcpy",
+        "overflow_var": "buf2",
+        "overflown_var": "control",
+        "vuln_function": "main",
+        "vulnerability": "VAROVERFLOW"
+    },
+    {
+        "address": "40059c",
+        "fnname": "strcpy",
+        "overflow_var": "buf2",
+        "vuln_function": "main",
+        "vulnerability": "RBPOVERFLOW"
+    },
+    {
+        "address": "40059c",
+        "fnname": "strcpy",
+        "overflow_var": "buf2",
+        "vuln_function": "main",
+        "vulnerability": "RETOVERFLOW"
+    },
+    {
+        "address": "40059c",
+        "fnname": "strcpy",
+        "overflow_var": "buf2",
+        "overflown_addr": "rbp+0x10",
+        "vuln_function": "main",
+        "vulnerability": "SCORRUPTION"
+    }
+]
