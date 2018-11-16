@@ -6,12 +6,13 @@
 
 /**
 	Variable struct:
-		Definition of a variable (base on the JSON).
+		Definition of a variable (based on the JSON).
 */
 struct Variable {
 	std::string name;
 	std::string type;
-	unsigned int bytes; //the number of byte used
+	unsigned int bytes;
+	unsigned int effective_size; //The effective size of the variable
 	std::string address;
 };
 
@@ -53,6 +54,10 @@ struct Vulnerability {
 	std::tuple<bool, std::string> overflown_addr;
 };
 
+/**
+ 	 Memory Stack struct:
+ 	 	 Definition how the values are stored on the memory
+ */
 struct MemoryStack{
 	std::map<unsigned int, Variable> var;
 	std::map<unsigned int, unsigned int> const_value;

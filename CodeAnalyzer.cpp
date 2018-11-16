@@ -72,6 +72,7 @@ void CodeAnalyzer::jsonToStruct(json input)
 					var_intern.at("type").get_to(v_.type);
 					var_intern.at("bytes").get_to(v_.bytes);
 					var_intern.at("address").get_to(v_.address);
+					v_.effective_size = v_.bytes;
 					variables_.push_back(v_);
 				}
 				function_.variables = variables_;
@@ -144,17 +145,20 @@ void CodeAnalyzer::writeJSON(const std::string filename)
  */
 void CodeAnalyzer::structToJson(json& output, const Vulnerability& vuln)
 {
-	if (std::get<0>(vuln.overflown_var) == true && vuln.type == "VAROVERFLOW"  ){
-		output += json { { "vulnerability", vuln.type }, { "vuln_function", vuln.vuln_function }, { "fnname", vuln.fnname }, {
-			"address", vuln.address }, { "overflow_var", vuln.overflow_var }, { "overflown_var", std::get<1>(vuln.overflown_var) }  };
-	}
-	else if (std::get<0>(vuln.overflown_addr) == true && ( vuln.type == "INVALIDACC" || vuln.type == "SCORRUPTION" ) ){
-		output += json { { "vulnerability", vuln.type }, { "vuln_function", vuln.vuln_function }, { "fnname", vuln.fnname }, {
-			"address", vuln.address }, { "overflow_var", vuln.overflow_var }, { "overflown_addr", std::get<1>(vuln.overflown_addr) } };
-	}
-	else {
-		output += json { { "vulnerability", vuln.type }, { "vuln_function", vuln.vuln_function }, { "fnname", vuln.fnname }, {
-			"address", vuln.address }, { "overflow_var", vuln.overflow_var } };
+	if (std::get<0>(vuln.overflown_var) == true && vuln.type == "VAROVERFLOW")
+	{
+		output += json { { "vulnerability", vuln.type }, { "vuln_function", vuln.vuln_function }, { "fnname",
+				vuln.fnname }, { "address", vuln.address }, { "overflow_var", vuln.overflow_var }, { "overflown_var",
+				std::get<1>(vuln.overflown_var) } };
+	} else if (std::get<0>(vuln.overflown_addr) == true && (vuln.type == "INVALIDACC" || vuln.type == "SCORRUPTION"))
+	{
+		output += json { { "vulnerability", vuln.type }, { "vuln_function", vuln.vuln_function }, { "fnname",
+				vuln.fnname }, { "address", vuln.address }, { "overflow_var", vuln.overflow_var }, { "overflown_addr",
+				std::get<1>(vuln.overflown_addr) } };
+	} else
+	{
+		output += json { { "vulnerability", vuln.type }, { "vuln_function", vuln.vuln_function }, { "fnname",
+				vuln.fnname }, { "address", vuln.address }, { "overflow_var", vuln.overflow_var } };
 	}
 }
 
@@ -231,22 +235,14 @@ void CodeAnalyzer::analyzeOverflow(Function* func, std::string func_name, Variab
 			if (mem_space > 0)
 			{
 				//Invalid Access
-				
 				vuln.type = "INVALIDACC";
 				vuln.overflown_addr = std::make_tuple(true, [](int pos)
 				{
 					std::stringstream ss;
-					std::string signal_; 
-					if (pos < 0){
-						pos = -1*pos;
-						signal_ ='-';
-						ss << "rbp" << signal_ << std::hex << std::showbase << pos;
-					}else{
-						std::stringstream ss;
-						ss << "rbp" << std::hex << std::showbase << pos;
-					}
+					if (pos < 0) ss << "rbp" << "-" << std::hex << std::showbase << std::abs(pos);
+					else ss << "rbp" << std::hex << std::showbase << pos;
 					return ss.str();
-				}(var_pos - p.bytes));
+				}(pos + size));
 
 				vulnerabilities.emplace_back(vuln);
 			}
@@ -312,55 +308,78 @@ void CodeAnalyzer::analyzeVulnFunction(Function *func, std::string func_name)
 		auto arg1 = std::get<1>(reg.getVarRegister("rdi"));
 		auto arg2 = std::get<1>(reg.getConstRegister("rsi"));
 
-		int overflow = arg2 - arg1->bytes;
+		int overflow = arg2 - arg1->effective_size;
 
 		analyzeOverflow(func, func_name, arg1, overflow);
 
-		arg1->bytes = arg2;
+		arg1->effective_size = arg2;
 
 	} else if (func_name == "strcpy")
 	{
 		auto arg1 = std::get<1>(reg.getVarRegister("rdi"));
 		auto arg2 = std::get<1>(reg.getVarRegister("rsi"));
 
-		int overflow = arg2->bytes - arg1->bytes;
+		int overflow = arg2->effective_size - arg1->effective_size;
 
 		analyzeOverflow(func, func_name, arg1, overflow);
 
-		arg1->bytes = arg2->bytes;
+		arg1->effective_size = arg2->effective_size;
 
 	} else if (func_name == "strcat")
 	{
 		auto arg1 = std::get<1>(reg.getVarRegister("rdi"));
 		auto arg2 = std::get<1>(reg.getVarRegister("rsi"));
 
-		int overflow = arg2->bytes - arg1->bytes;
+		int overflow = arg2->effective_size - arg1->effective_size;
 
 		analyzeOverflow(func, func_name, arg1, overflow);
 
-		arg1->bytes += arg2->bytes;
+		arg1->effective_size += arg2->effective_size;
 
 	} else if (func_name == "strncpy")
 	{
 		auto arg1 = std::get<1>(reg.getVarRegister("rdi"));
-		auto arg3 = std::get<1>(reg.getVarRegister("rsi"));
+		auto arg3 = std::get<1>(reg.getConstRegister("rdx"));
 
-		int overflow = arg3->bytes - arg1->bytes;
+		int overflow = arg3 - arg1->effective_size;
 
 		analyzeOverflow(func, func_name, arg1, overflow);
 
-		arg1->bytes = arg3->bytes;
+		arg1->effective_size = arg3 + 1;
 
 	} else if (func_name == "strncat")
 	{
 		auto arg1 = std::get<1>(reg.getVarRegister("rdi"));
-		auto arg3 = std::get<1>(reg.getVarRegister("rsi"));
+		auto arg2 = std::get<1>(reg.getVarRegister("rsi"));
+		auto arg3 = std::get<1>(reg.getConstRegister("rdx"));
 
-		int overflow = arg3->bytes - arg1->bytes;
+		int overflow = arg3 - arg1->effective_size;
 
 		analyzeOverflow(func, func_name, arg1, overflow);
 
-		arg1->bytes = arg3->bytes;
+		arg1->effective_size += arg2->effective_size;
+
+	} else if (func_name == "read")
+	{
+		auto arg1 = std::get<1>(reg.getVarRegister("rsi"));
+		auto arg2 = std::get<1>(reg.getConstRegister("rdx"));
+
+		int overflow = arg2 - arg1->effective_size;
+
+		analyzeOverflow(func, func_name, arg1, overflow);
+
+		arg1->effective_size = arg2;
+
+	}else if (func_name == "read")
+	{
+		auto arg1 = std::get<1>(reg.getVarRegister("rsi"));
+		auto arg2 = std::get<1>(reg.getConstRegister("rdx"));
+
+		int overflow = arg2 - arg1->effective_size;
+
+		analyzeOverflow(func, func_name, arg1, overflow);
+
+		arg1->effective_size = arg2;
 	}
 }
 
