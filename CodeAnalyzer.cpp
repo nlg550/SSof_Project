@@ -488,7 +488,6 @@ void CodeAnalyzer::analyzeFunction(Function *func, std::stack<Function*> &stack_
 	while (func->current_inst < func->Ninstructions) //iterate through all instructions specified in <func>
 	{
 		current_inst = func->instructions[func->current_inst];
-		reg.addRegister(std::stoull(current_inst.address, nullptr, 16), "rsi");
 
 		if (!leave)
 		{
@@ -832,14 +831,22 @@ void CodeAnalyzer::analyzeFunction(Function *func, std::stack<Function*> &stack_
  */
 void CodeAnalyzer::analyze()
 {
+	Function *current_func;
 	std::stack<Function*> func_stack;
 
 	func_stack.emplace(&functions["main"]);
 	allocFunction(functions["main"], 0);
+	current_func = func_stack.top();
 
 	while (!func_stack.empty())
 	{
-		analyzeFunction(func_stack.top(), func_stack);
+		if (current_func != func_stack.top())
+		{
+			current_func = func_stack.top();
+		}
+
+		analyzeFunction(current_func, func_stack);
 	}
+
 }
 
